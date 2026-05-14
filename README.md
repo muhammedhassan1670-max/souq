@@ -1,0 +1,98 @@
+# سوق البلد
+
+واجهة Marketplace عربية RTL لطلبات القرية، مع لوحة تحكم حقيقية متصلة بـ Supabase.
+
+## المتطلبات
+
+- Node.js 20 أو أحدث
+- حساب Supabase
+- متصفح حديث
+
+## إعداد Supabase
+
+1. افتح Supabase وأنشئ مشروع جديد.
+2. من Project Settings > API انسخ:
+   - Project URL
+   - anon public key
+3. انسخ ملف البيئة:
+
+```bash
+cp .env.example .env
+```
+
+4. ضع القيم داخل `.env`:
+
+```env
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+```
+
+5. افتح Supabase SQL Editor وشغّل الملف:
+
+```text
+supabase/schema.sql
+```
+
+6. الملف ينشئ الجداول و RLS policies و bucket باسم `market-images`.
+   لو لم يظهر bucket تلقائيًا، أنشئه يدويًا من Storage واجعله Public.
+
+7. من Authentication > Users أنشئ admin user بالبريد وكلمة المرور.
+
+## التشغيل المحلي
+
+```bash
+npm install
+npm run dev
+```
+
+افتح:
+
+```text
+http://127.0.0.1:5173
+```
+
+لو مفاتيح Supabase ناقصة، سيعمل الموقع ببيانات seed للتطوير، وستظهر رسالة واضحة في صفحة دخول الأدمن.
+
+## تجربة الأدمن
+
+1. افتح:
+
+```text
+/admin/login
+```
+
+2. سجّل دخولك بحساب Supabase Auth.
+3. افتح `/admin/categories` وأضف قسم.
+4. افتح `/admin/shops` وأضف محل.
+5. افتح `/admin/products` وأضف منتج بصورة وسعر وقسم.
+6. افتح صفحة العملاء `/products` وتأكد أن المنتج ظهر.
+7. عدّل السعر من الأدمن وتأكد أن السعر يتحدث للعميل.
+8. اجعل المنتج غير متاح وتأكد أنه يظهر `خلصان حاليًا`.
+
+## تجربة طلب واتساب
+
+1. من صفحة العميل أضف منتجين للسلة.
+2. افتح Checkout.
+3. اكتب الاسم ورقم الموبايل والعنوان.
+4. اضغط `ابعت الطلب واتساب`.
+5. يتم حفظ الطلب في `orders` وحفظ المنتجات في `order_items`.
+6. يفتح واتساب برسالة منظمة.
+7. تفضى السلة بعد نجاح الحفظ.
+8. يظهر الطلب في `/admin/orders`.
+
+## أوامر الفحص
+
+```bash
+npm run lint
+npm run build
+```
+
+كلاهما يجب أن يمر قبل النشر.
+
+## ملفات مهمة
+
+- `supabase/schema.sql`: الجداول، RLS، Storage policies.
+- `src/lib/supabase.ts`: Supabase client و env validation.
+- `src/services/*Service.ts`: طبقة القراءة والكتابة.
+- `src/pages/admin/*`: صفحات لوحة التحكم الحقيقية.
+- `docs/ADMIN_FIRST_RUN.md`: Checklist أول تشغيل للأدمن.
