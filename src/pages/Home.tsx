@@ -18,7 +18,6 @@ import {
   Sparkles,
   Store,
   Tag,
-  type LucideIcon,
 } from 'lucide-react';
 import { useMarketState } from '@/hooks/useMarketState';
 import ProductCard from '@/components/ProductCard';
@@ -27,31 +26,77 @@ import { generateWhatsAppLink } from '@/utils/whatsapp';
 import { getQuickSearchTerms, searchProducts } from '@/utils/productSearch';
 import { createCategoryLookups, getActiveCategories, isProductCategoryVisible } from '@/utils/categoryUtils';
 
-const iconComponents: Record<string, LucideIcon> = [
-  Apple,
-  Baby,
-  Beef,
-  Fish,
-  Heart,
-  HomeIcon,
-  Leaf,
-  Package,
-  ShoppingBag,
-  ShoppingBasket,
-  Sparkles,
-  Store,
-  Tag,
-].reduce<Record<string, LucideIcon>>((acc, Icon) => {
-  acc[normalizeIconKey(Icon.displayName || Icon.name)] = Icon;
-  return acc;
-}, {});
-
 function normalizeIconKey(icon?: string) {
   return icon?.replace(/[\s_-]+/g, '').toLowerCase() || '';
 }
 
-function resolveCategoryIcon(icon?: string) {
-  return iconComponents[normalizeIconKey(icon)] || Package;
+function CategoryFallbackIcon({ icon }: { icon?: string }) {
+  const className = 'h-6 w-6';
+
+  switch (normalizeIconKey(icon)) {
+    case 'apple':
+      return <Apple className={className} />;
+    case 'baby':
+      return <Baby className={className} />;
+    case 'beef':
+      return <Beef className={className} />;
+    case 'fish':
+      return <Fish className={className} />;
+    case 'heart':
+      return <Heart className={className} />;
+    case 'home':
+    case 'homeicon':
+      return <HomeIcon className={className} />;
+    case 'leaf':
+      return <Leaf className={className} />;
+    case 'shoppingbag':
+      return <ShoppingBag className={className} />;
+    case 'shoppingbasket':
+      return <ShoppingBasket className={className} />;
+    case 'sparkles':
+      return <Sparkles className={className} />;
+    case 'store':
+      return <Store className={className} />;
+    case 'tag':
+      return <Tag className={className} />;
+    case 'package':
+    default:
+      return <Package className={className} />;
+  }
+}
+
+function CategoryVisual({
+  imageUrl,
+  icon,
+  label,
+  toneClass,
+}: {
+  imageUrl?: string;
+  icon?: string;
+  label: string;
+  toneClass: string;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  if (imageUrl && !imageFailed) {
+    return (
+      <span className="mx-auto mb-3 block h-14 w-14 overflow-hidden rounded-2xl border border-sand bg-cream-warm">
+        <img
+          src={imageUrl}
+          alt={label}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={() => setImageFailed(true)}
+        />
+      </span>
+    );
+  }
+
+  return (
+    <span className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full ${toneClass}`}>
+      <CategoryFallbackIcon icon={icon} />
+    </span>
+  );
 }
 
 const categoryToneClasses = [
@@ -253,13 +298,13 @@ export default function Home() {
         ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {homeCategories.map((category, index) => {
-            const Icon = resolveCategoryIcon(category.icon);
             const comingSoon = category.comingSoon;
+            const toneClass = categoryToneClasses[index % categoryToneClasses.length];
             return (
               <button
                 key={category.id}
                 onClick={() => handleCategoryClick(category.id)}
-                className={`relative min-h-[112px] rounded-2xl border p-3 text-center shadow-card transition hover:-translate-y-0.5 hover:shadow-elevated ${
+                className={`relative min-h-[124px] rounded-2xl border p-3 text-center shadow-card transition hover:-translate-y-0.5 hover:shadow-elevated ${
                   comingSoon ? 'border-clay/25 bg-clay/5 hover:border-clay' : 'border-sand bg-white hover:border-olive'
                 }`}
               >
@@ -268,9 +313,7 @@ export default function Home() {
                     قريبًا
                   </span>
                 )}
-                <span className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full ${categoryToneClasses[index % categoryToneClasses.length]}`}>
-                  <Icon className="h-6 w-6" />
-                </span>
+                <CategoryVisual imageUrl={category.imageUrl} icon={category.icon} label={category.name} toneClass={toneClass} />
                 <span className="text-sm font-black leading-5 text-charcoal">{category.name}</span>
               </button>
             );

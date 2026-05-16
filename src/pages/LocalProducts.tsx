@@ -57,12 +57,23 @@ export default function LocalProducts() {
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              className={`inline-flex flex-shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 activeCategory === cat
                   ? 'bg-olive text-white'
                   : 'bg-cream-warm text-charcoal border border-sand hover:border-olive'
               }`}
             >
+              {category?.imageUrl && (
+                <img
+                  src={category.imageUrl}
+                  alt=""
+                  className="h-5 w-5 rounded-full object-cover"
+                  loading="lazy"
+                  onError={(event) => {
+                    event.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
               {label}
               {category?.comingSoon && <span className="mr-1 text-[10px] font-black">قريبًا</span>}
             </button>

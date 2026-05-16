@@ -191,7 +191,7 @@ export default function Products() {
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(selectedCategoryInfo?.id === cat.id ? '' : cat.id)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                className={`inline-flex flex-shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   selectedCategoryInfo?.id === cat.id
                     ? 'bg-sahar text-white'
                     : cat.comingSoon
@@ -199,6 +199,17 @@ export default function Products() {
                       : 'bg-cream-warm text-charcoal border border-sand hover:border-sahar'
                 }`}
               >
+                {cat.imageUrl && (
+                  <img
+                    src={cat.imageUrl}
+                    alt=""
+                    className="h-5 w-5 rounded-full object-cover"
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none';
+                    }}
+                  />
+                )}
                 {cat.name}
                 {cat.comingSoon && <span className="mr-1 text-[10px] font-black">قريبًا</span>}
               </button>
