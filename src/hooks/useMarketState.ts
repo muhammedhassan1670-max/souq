@@ -5,6 +5,7 @@ import { listCategories, subscribeToCategories } from '@/services/categoriesServ
 import { listShops, subscribeToShops } from '@/services/shopsService';
 import { getSettings, subscribeToSettings } from '@/services/settingsService';
 import { listOrders, subscribeToOrders } from '@/services/ordersService';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 type MarketStateWithMeta = MarketState & {
   isLoading: boolean;
@@ -14,7 +15,7 @@ type MarketStateWithMeta = MarketState & {
 
 export function useMarketState() {
   const [marketState, setMarketState] = useState<MarketStateWithMeta>(() => ({
-    ...getInitialMarketState(),
+    ...getSafeInitialMarketState(),
     isLoading: true,
     refresh: async () => undefined,
   }));
@@ -78,4 +79,17 @@ export function useMarketState() {
   }, [refresh]);
 
   return marketState;
+}
+
+function getSafeInitialMarketState(): MarketState {
+  const initialState = getInitialMarketState();
+  if (!isSupabaseConfigured) return initialState;
+
+  return {
+    ...initialState,
+    products: [],
+    shops: [],
+    categories: [],
+    orders: [],
+  };
 }

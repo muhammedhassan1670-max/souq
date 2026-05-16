@@ -1,15 +1,4 @@
-import type { Category, SubscriptionPackage } from './types';
-
-export const categories: Category[] = [
-  { id: 'بقالة', name: 'بقالة', icon: 'ShoppingBag', color: '#C4A35A' },
-  { id: 'خضار وفاكهة', name: 'خضار وفاكهة', icon: 'Leaf', color: '#4A7C59' },
-  { id: 'لحوم ودواجن', name: 'لحوم ودواجن', icon: 'Beef', color: '#B85042' },
-  { id: 'أسماك', name: 'أسماك', icon: 'Fish', color: '#5B8DB8' },
-  { id: 'منظفات', name: 'منظفات', icon: 'Sparkles', color: '#7A8B6A' },
-  { id: 'أدوات منزلية', name: 'أدوات منزلية', icon: 'Home', color: '#B8704F' },
-  { id: 'مستلزمات أطفال', name: 'مستلزمات أطفال', icon: 'Baby', color: '#D4956B' },
-  { id: 'منتجات بلدي', name: 'منتجات بلدي', icon: 'Heart', color: '#9A7E3C' },
-];
+import type { SubscriptionPackage } from './types';
 
 export const subscriptionPackages: SubscriptionPackage[] = [
   {

@@ -1,5 +1,5 @@
 ﻿import { ArrowRight, Check, Calendar, ChevronLeft } from 'lucide-react';
-import { subscriptionPackages } from '@/data/categories';
+import { subscriptionPackages } from '@/data/subscriptions';
 import { generateWhatsAppLink } from '@/utils/whatsapp';
 
 export default function Subscriptions() {

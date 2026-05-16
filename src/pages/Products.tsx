@@ -4,8 +4,14 @@ import { ArrowRight, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useMarketState } from '@/hooks/useMarketState';
 import ProductCard from '@/components/ProductCard';
 import { EmptyState, InlineError, LoadingGrid } from '@/components/DataState';
-import { searchProducts } from '@/utils/productSearch';
+import { getQuickSearchTerms, searchProducts } from '@/utils/productSearch';
 import { generateWhatsAppLink } from '@/utils/whatsapp';
+import {
+  createCategoryLookups,
+  getActiveCategories,
+  isProductCategoryVisible,
+  productMatchesCategory,
+} from '@/utils/categoryUtils';
 
 export default function Products() {
   const { products, categories, isLoading, error, refresh } = useMarketState();
@@ -30,25 +36,29 @@ export default function Products() {
     window.scrollTo(0, 0);
   }, []);
 
-  const categoryMap = useMemo(() => new Map(categories.map((category) => [category.name, category])), [categories]);
-  const selectedCategoryInfo = selectedCategory ? categoryMap.get(selectedCategory) : undefined;
+  const activeCategories = useMemo(() => getActiveCategories(categories), [categories]);
+  const categoryLookups = useMemo(() => createCategoryLookups(categories), [categories]);
+  const selectedCategoryInfo = selectedCategory
+    ? activeCategories.find((category) => category.id === selectedCategory || category.name === selectedCategory)
+    : undefined;
+  const selectedCategoryLabel = selectedCategoryInfo?.name || '';
   const selectedCategoryComingSoon = selectedCategoryInfo?.comingSoon === true;
 
   const filteredProducts = useMemo(() => {
     let result = [...products];
 
-    result = result.filter((product) => {
-      const category = categoryMap.get(product.category);
-      return category?.active !== false && !category?.comingSoon;
-    });
+    result = result.filter((product) => isProductCategoryVisible(product, categoryLookups));
+
+    if (selectedCategory && !selectedCategoryInfo) {
+      return [];
+    }
 
     if (selectedCategoryComingSoon) {
       return [];
     }
 
-    // Category filter
-    if (selectedCategory) {
-      result = result.filter(p => p.category === selectedCategory);
+    if (selectedCategoryInfo) {
+      result = result.filter((product) => productMatchesCategory(product, selectedCategoryInfo, categoryLookups));
     }
 
     if (searchQuery.trim()) {
@@ -92,7 +102,7 @@ export default function Products() {
     }
 
     return result;
-  }, [products, categoryMap, selectedCategoryComingSoon, selectedCategory, searchQuery, initialShopId, offersOnly, localOnly, availableOnly, sortBy]);
+  }, [products, categoryLookups, selectedCategory, selectedCategoryInfo, selectedCategoryComingSoon, searchQuery, initialShopId, offersOnly, localOnly, availableOnly, sortBy]);
 
   const filterChips = [
     { label: 'كل المنتجات', active: !selectedCategory && !offersOnly && !localOnly && !searchQuery, onClick: () => { setSelectedCategory(''); setOffersOnly(false); setLocalOnly(false); setSearchQuery(''); } },
@@ -100,6 +110,7 @@ export default function Products() {
     { label: 'بلدي', active: localOnly, onClick: () => { setLocalOnly(!localOnly); setOffersOnly(false); } },
     { label: 'المتاح فقط', active: availableOnly, onClick: () => setAvailableOnly(!availableOnly) },
   ];
+  const quickSearchTerms = useMemo(() => getQuickSearchTerms(products.filter((product) => isProductCategoryVisible(product, categoryLookups))), [categoryLookups, products]);
 
   const handleWhatsAppOrder = () => {
     window.open(generateWhatsAppLink(searchQuery ? `مش لاقي المنتج؟ عاوز أطلب: ${searchQuery}` : 'مش لاقي المنتج؟ عاوز أطلب واتساب'), '_blank');
@@ -115,7 +126,7 @@ export default function Products() {
               <ArrowRight className="w-5 h-5 text-charcoal" />
             </button>
             <h1 className="text-lg font-bold text-charcoal">
-              {initialShopId ? 'منتجات المحل' : selectedCategory || 'كل المنتجات'}
+              {initialShopId ? 'منتجات المحل' : selectedCategoryLabel || 'كل المنتجات'}
             </h1>
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -146,7 +157,7 @@ export default function Products() {
           </div>
 
           <div className="mb-2 flex gap-2 overflow-x-auto no-scrollbar">
-            {['سكر', 'زيت', 'رز', 'خضار', 'منظفات', 'فراخ', 'لبن'].map((term) => (
+            {quickSearchTerms.map((term) => (
               <button
                 key={term}
                 onClick={() => setSearchQuery(term)}
@@ -176,12 +187,12 @@ export default function Products() {
 
           {/* Categories */}
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 mt-1">
-            {categories.filter((cat) => cat.active !== false).map((cat) => (
+            {activeCategories.map((cat) => (
               <button
                 key={cat.id}
-                onClick={() => setSelectedCategory(selectedCategory === cat.name ? '' : cat.name)}
+                onClick={() => setSelectedCategory(selectedCategoryInfo?.id === cat.id ? '' : cat.id)}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  selectedCategory === cat.name
+                  selectedCategoryInfo?.id === cat.id
                     ? 'bg-sahar text-white'
                     : cat.comingSoon
                       ? 'bg-clay/10 text-clay-dark border border-clay/20 hover:border-clay'
@@ -220,7 +231,7 @@ export default function Products() {
       <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
         <p className="text-sm text-charcoal-muted">
           {selectedCategoryComingSoon ? 'القسم قريبًا' : `${filteredProducts.length} منتج`}
-          {selectedCategory && !selectedCategoryComingSoon && ` في ${selectedCategory}`}
+          {selectedCategoryLabel && !selectedCategoryComingSoon && ` في ${selectedCategoryLabel}`}
           {searchQuery && ` عن "${searchQuery}"`}
         </p>
       </div>
@@ -232,8 +243,8 @@ export default function Products() {
         </div>
       ) : selectedCategoryComingSoon ? (
         <EmptyState
-          title={`${selectedCategory} قريبًا`}
-          description="القسم ده لسه بيتجهز وهنفتحه قريب."
+          title={`${selectedCategoryLabel} قريبًا`}
+          description="القسم ده قريبًا، تابعنا قريبًا"
           actionLabel="اطلب واتساب"
           onAction={handleWhatsAppOrder}
         />

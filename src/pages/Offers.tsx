@@ -4,17 +4,17 @@ import { useMarketState } from '@/hooks/useMarketState';
 import ProductCard from '@/components/ProductCard';
 import { EmptyState, InlineError, LoadingGrid } from '@/components/DataState';
 import { generateWhatsAppLink } from '@/utils/whatsapp';
+import { createCategoryLookups, isProductCategoryVisible } from '@/utils/categoryUtils';
 
 export default function Offers() {
   const { products, categories, isLoading, error, refresh } = useMarketState();
 
-  const categoryMap = useMemo(() => new Map(categories.map((category) => [category.name, category])), [categories]);
+  const categoryLookups = useMemo(() => createCategoryLookups(categories), [categories]);
   const offers = useMemo(
     () => products.filter((product) => {
-      const category = categoryMap.get(product.category);
-      return product.isOffer && category?.active !== false && !category?.comingSoon;
+      return product.isOffer && isProductCategoryVisible(product, categoryLookups);
     }),
-    [categoryMap, products],
+    [categoryLookups, products],
   );
 
   return (

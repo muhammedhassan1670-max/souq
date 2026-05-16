@@ -2,31 +2,65 @@
 import { useNavigate } from 'react-router-dom';
 import {
   Apple,
+  Baby,
   Beef,
   ChevronLeft,
+  Fish,
+  Heart,
   Home as HomeIcon,
+  Leaf,
   MessageCircle,
+  Package,
   Phone,
   Search,
+  ShoppingBag,
   ShoppingBasket,
   Sparkles,
+  Store,
   Tag,
+  type LucideIcon,
 } from 'lucide-react';
 import { useMarketState } from '@/hooks/useMarketState';
 import ProductCard from '@/components/ProductCard';
 import { EmptyState, InlineError, LoadingGrid } from '@/components/DataState';
 import { generateWhatsAppLink } from '@/utils/whatsapp';
-import { searchProducts } from '@/utils/productSearch';
+import { getQuickSearchTerms, searchProducts } from '@/utils/productSearch';
+import { createCategoryLookups, getActiveCategories, isProductCategoryVisible } from '@/utils/categoryUtils';
 
-const quickSearchTerms = ['سكر', 'زيت', 'رز', 'خضار', 'منظفات'];
+const iconComponents: Record<string, LucideIcon> = [
+  Apple,
+  Baby,
+  Beef,
+  Fish,
+  Heart,
+  HomeIcon,
+  Leaf,
+  Package,
+  ShoppingBag,
+  ShoppingBasket,
+  Sparkles,
+  Store,
+  Tag,
+].reduce<Record<string, LucideIcon>>((acc, Icon) => {
+  acc[normalizeIconKey(Icon.displayName || Icon.name)] = Icon;
+  return acc;
+}, {});
 
-const priorityCategories = [
-  { id: 'بقالة', label: 'بقالة', icon: ShoppingBasket, color: 'bg-sahar/15 text-sahar-dark' },
-  { id: 'خضار وفاكهة', label: 'خضار وفاكهة', icon: Apple, color: 'bg-success/15 text-success' },
-  { id: 'لحوم ودواجن', label: 'لحوم ودواجن', icon: Beef, color: 'bg-error/15 text-error' },
-  { id: 'منظفات', label: 'منظفات', icon: Sparkles, color: 'bg-olive/15 text-olive-dark' },
-  { id: 'منتجات بلدي', label: 'منتجات بلدي', icon: HomeIcon, color: 'bg-clay/15 text-clay-dark' },
-  { id: 'offers', label: 'عروض اليوم', icon: Tag, color: 'bg-clay/15 text-clay-dark' },
+function normalizeIconKey(icon?: string) {
+  return icon?.replace(/[\s_-]+/g, '').toLowerCase() || '';
+}
+
+function resolveCategoryIcon(icon?: string) {
+  return iconComponents[normalizeIconKey(icon)] || Package;
+}
+
+const categoryToneClasses = [
+  'bg-sahar/15 text-sahar-dark',
+  'bg-success/15 text-success',
+  'bg-error/15 text-error',
+  'bg-olive/15 text-olive-dark',
+  'bg-clay/15 text-clay-dark',
+  'bg-blue-50 text-blue-700',
 ];
 
 export default function Home() {
@@ -34,19 +68,18 @@ export default function Home() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const categoryMap = useMemo(() => new Map(categories.map((category) => [category.name, category])), [categories]);
+  const categoryLookups = useMemo(() => createCategoryLookups(categories), [categories]);
+  const homeCategories = useMemo(() => getActiveCategories(categories).slice(0, 8), [categories]);
   const customerProducts = useMemo(
-    () => products.filter((product) => {
-      const category = categoryMap.get(product.category);
-      return category?.active !== false && !category?.comingSoon;
-    }),
-    [categoryMap, products],
+    () => products.filter((product) => isProductCategoryVisible(product, categoryLookups)),
+    [categoryLookups, products],
   );
 
   const offers = useMemo(
     () => customerProducts.filter((product) => product.isOffer && product.available).slice(0, 6),
     [customerProducts],
   );
+  const quickSearchTerms = useMemo(() => getQuickSearchTerms(customerProducts, 5), [customerProducts]);
 
   const mostOrdered = useMemo(() => {
     const featured = customerProducts.filter((product) => product.available && product.isFeatured);
@@ -72,10 +105,6 @@ export default function Home() {
   };
 
   const handleCategoryClick = (categoryId: string) => {
-    if (categoryId === 'offers') {
-      navigate('/offers');
-      return;
-    }
     navigate('/products', { state: { category: categoryId } });
   };
 
@@ -219,11 +248,13 @@ export default function Home() {
         actionLabel="عرض كل الأقسام"
         onAction={() => navigate('/products')}
       >
+        {homeCategories.length === 0 ? (
+          <EmptyState title="لم يتم إضافة أقسام بعد" description="أضف أول قسم من لوحة الأدمن ليظهر هنا." />
+        ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {priorityCategories.filter((category) => category.id === 'offers' || categoryMap.get(category.label)?.active !== false).map((category) => {
-            const Icon = category.icon;
-            const categoryState = categoryMap.get(category.label);
-            const comingSoon = categoryState?.comingSoon;
+          {homeCategories.map((category, index) => {
+            const Icon = resolveCategoryIcon(category.icon);
+            const comingSoon = category.comingSoon;
             return (
               <button
                 key={category.id}
@@ -237,14 +268,15 @@ export default function Home() {
                     قريبًا
                   </span>
                 )}
-                <span className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full ${category.color}`}>
+                <span className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full ${categoryToneClasses[index % categoryToneClasses.length]}`}>
                   <Icon className="h-6 w-6" />
                 </span>
-                <span className="text-sm font-black leading-5 text-charcoal">{category.label}</span>
+                <span className="text-sm font-black leading-5 text-charcoal">{category.name}</span>
               </button>
             );
           })}
         </div>
+        )}
       </SectionShell>
 
       <SectionShell

@@ -1,4 +1,3 @@
-import { categories as seedCategories } from '@/data/categories';
 import type { Category } from '@/data/types';
 import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase';
 import { subscribeToTableChanges } from '@/services/realtimeService';
@@ -11,7 +10,7 @@ type CategoryRow = {
   image_url: string | null;
   active: boolean;
   coming_soon: boolean | null;
-  sort_order: number;
+  sort_order: number | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -34,9 +33,9 @@ export function mapCategory(row: CategoryRow): Category {
     icon: row.icon || 'ShoppingBag',
     imageUrl: row.image_url || undefined,
     color: '#5B6B4E',
-    active: row.active,
+    active: row.active !== false,
     comingSoon: row.coming_soon ?? false,
-    sortOrder: row.sort_order,
+    sortOrder: row.sort_order ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -44,9 +43,7 @@ export function mapCategory(row: CategoryRow): Category {
 
 export async function listCategories(options: { activeOnly?: boolean } = {}) {
   if (!isSupabaseConfigured) {
-    return seedCategories
-      .filter((category) => !options.activeOnly || category.active !== false)
-      .map((category, index) => ({ ...category, sortOrder: category.sortOrder ?? index }));
+    return [];
   }
 
   const client = requireSupabase();

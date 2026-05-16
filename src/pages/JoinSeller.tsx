@@ -1,10 +1,13 @@
 ﻿import { useState } from 'react';
 import { ArrowRight, Store, Send, CheckCircle } from 'lucide-react';
-import { categories } from '@/data/categories';
+import { useMarketState } from '@/hooks/useMarketState';
 import { generateSellerRequestMessage, openWhatsApp } from '@/utils/whatsapp';
 import { createSellerRequest } from '@/services/ordersService';
+import { getActiveCategories } from '@/utils/categoryUtils';
 
 export default function JoinSeller() {
+  const { categories } = useMarketState();
+  const activeCategories = getActiveCategories(categories);
   const [formData, setFormData] = useState({
     shopName: '',
     ownerName: '',
@@ -139,10 +142,9 @@ export default function JoinSeller() {
                 className={`w-full h-11 px-4 bg-white border rounded-xl text-sm focus:border-sahar focus:ring-2 focus:ring-sahar/15 outline-none transition-all ${errors.category ? 'border-error' : 'border-sand'}`}
               >
                 <option value="">اختار نوع المحل</option>
-                {categories.map(cat => (
-                  <option key={cat.id} value={cat.name}>{cat.name}</option>
+                {activeCategories.map(cat => (
+                  <option key={cat.id} value={cat.name}>{cat.name}{cat.comingSoon ? ' - قريبًا' : ''}</option>
                 ))}
-                <option value="أخرى">أخرى</option>
               </select>
               {errors.category && <p className="text-error text-xs mt-1">{errors.category}</p>}
             </div>

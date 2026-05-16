@@ -1,6 +1,5 @@
 import { products as seedProducts } from '@/data/products';
 import { shops as seedShops } from '@/data/shops';
-import { categories as seedCategories } from '@/data/categories';
 import type { Product, Shop, Category } from '@/data/types';
 
 export type MarketSettings = {
@@ -54,7 +53,7 @@ export function getInitialMarketState(): MarketState {
   return {
     products: seedProducts,
     shops: seedShops,
-    categories: seedCategories,
+    categories: [],
     orders: [],
     settings: defaultSettings,
   };
@@ -73,7 +72,7 @@ export function loadMarketState(): MarketState {
     return {
       products: Array.isArray(parsed.products) ? parsed.products : seedProducts,
       shops: Array.isArray(parsed.shops) ? parsed.shops : seedShops,
-      categories: Array.isArray(parsed.categories) ? parsed.categories : seedCategories,
+      categories: Array.isArray(parsed.categories) ? parsed.categories : [],
       orders: Array.isArray(parsed.orders) ? parsed.orders : [],
       settings: { ...defaultSettings, ...(parsed.settings || {}) },
     };

@@ -55,3 +55,23 @@ export const searchProducts = (products: Product[], query: string) => {
     return terms.some((term) => searchableText.includes(term));
   });
 };
+
+export const getQuickSearchTerms = (products: Product[], limit = 7) => {
+  const terms: string[] = [];
+  const seen = new Set<string>();
+
+  products
+    .filter((product) => product.available)
+    .forEach((product) => {
+      const candidates = [...product.keywords, product.name.split(/\s+/).slice(0, 2).join(' ')];
+      candidates.forEach((candidate) => {
+        const term = candidate.trim();
+        const normalizedTerm = normalize(term);
+        if (!term || term.length < 2 || seen.has(normalizedTerm)) return;
+        seen.add(normalizedTerm);
+        terms.push(term);
+      });
+    });
+
+  return terms.slice(0, limit);
+};

@@ -4,7 +4,8 @@ import { useMarketState } from '@/hooks/useMarketState';
 import type { Product } from '@/data/types';
 import ProductCard from './ProductCard';
 import { generateWhatsAppLink } from '@/utils/whatsapp';
-import { searchProducts } from '@/utils/productSearch';
+import { getQuickSearchTerms, searchProducts } from '@/utils/productSearch';
+import { createCategoryLookups, isProductCategoryVisible } from '@/utils/categoryUtils';
 
 interface SearchOverlayProps {
   isOpen: boolean;
@@ -13,9 +14,15 @@ interface SearchOverlayProps {
 }
 
 export default function SearchOverlay({ isOpen, onClose, onProductClick }: SearchOverlayProps) {
-  const { products } = useMarketState();
+  const { products, categories } = useMarketState();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const categoryLookups = useMemo(() => createCategoryLookups(categories), [categories]);
+  const visibleProducts = useMemo(
+    () => products.filter((product) => isProductCategoryVisible(product, categoryLookups)),
+    [categoryLookups, products],
+  );
+  const quickSearchTerms = useMemo(() => getQuickSearchTerms(visibleProducts), [visibleProducts]);
 
   useEffect(() => {
     if (isOpen) {
@@ -34,8 +41,8 @@ export default function SearchOverlay({ isOpen, onClose, onProductClick }: Searc
       return [];
     }
 
-    return searchProducts(products, query);
-  }, [query, products]);
+    return searchProducts(visibleProducts, query);
+  }, [query, visibleProducts]);
 
   const handleWhatsAppOrder = () => {
     window.open(generateWhatsAppLink(`مش لاقي المنتج؟ عاوز أطلب: ${query}`), '_blank');
@@ -86,7 +93,7 @@ export default function SearchOverlay({ isOpen, onClose, onProductClick }: Searc
               اكتب اسم المنتج أو دوس على كلمة جاهزة
             </p>
             <div className="mt-6 flex flex-wrap gap-2 justify-center">
-              {['سكر', 'زيت', 'رز', 'خضار', 'منظفات', 'فراخ', 'لبن'].map((term) => (
+              {quickSearchTerms.map((term) => (
                 <button
                   key={term}
                   onClick={() => setQuery(term)}

@@ -1,8 +1,10 @@
+import { useMemo } from 'react';
 import { X, Plus, Minus, ShoppingCart, MessageCircle, Check } from 'lucide-react';
 import type { Product } from '@/data/types';
 import { useCart } from '@/contexts/CartContext';
 import { useMarketState } from '@/hooks/useMarketState';
 import { generateWhatsAppLink } from '@/utils/whatsapp';
+import { createCategoryLookups, findProductCategory } from '@/utils/categoryUtils';
 
 interface QuickViewModalProps {
   product: Product | null;
@@ -11,14 +13,16 @@ interface QuickViewModalProps {
 }
 
 export default function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps) {
-  const { shops } = useMarketState();
+  const { shops, categories } = useMarketState();
   const { addToCart, isInCart, getCartItem, increaseQuantity, decreaseQuantity, removeFromCart } = useCart();
+  const categoryLookups = useMemo(() => createCategoryLookups(categories), [categories]);
 
   if (!isOpen || !product) return null;
 
   const cartItem = getCartItem(product.id);
   const inCart = isInCart(product.id);
   const shop = product.shopId ? shops.find((s) => s.id === product.shopId) : null;
+  const categoryName = findProductCategory(product, categoryLookups)?.name || product.category;
 
   const discountPercent = product.oldPrice && product.oldPrice > product.price
     ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
@@ -77,7 +81,7 @@ export default function QuickViewModal({ product, isOpen, onClose }: QuickViewMo
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
-          <span className="text-xs text-charcoal-muted">{product.category}</span>
+          <span className="text-xs text-charcoal-muted">{categoryName}</span>
           <h2 className="text-xl font-bold text-charcoal mt-1">{product.name}</h2>
 
           {/* Price */}

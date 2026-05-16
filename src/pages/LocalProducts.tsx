@@ -4,8 +4,13 @@ import { useMarketState } from '@/hooks/useMarketState';
 import type { Product } from '@/data/types';
 import ProductCard from '@/components/ProductCard';
 import QuickViewModal from '@/components/QuickViewModal';
-
-const localCategories = ['الكل', 'لبن', 'جبنة', 'بيض', 'عسل', 'خضار', 'فراخ', 'مخبوزات', 'سمن'];
+import { EmptyState } from '@/components/DataState';
+import {
+  createCategoryLookups,
+  getActiveCategories,
+  isProductCategoryVisible,
+  productMatchesCategory,
+} from '@/utils/categoryUtils';
 
 export default function LocalProducts() {
   const { products, categories } = useMarketState();
@@ -13,20 +18,19 @@ export default function LocalProducts() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
 
-  const categoryMap = useMemo(() => new Map(categories.map((category) => [category.name, category])), [categories]);
+  const activeCategories = useMemo(() => getActiveCategories(categories), [categories]);
+  const categoryLookups = useMemo(() => createCategoryLookups(categories), [categories]);
+  const selectedCategory = activeCategory === 'الكل'
+    ? undefined
+    : activeCategories.find((category) => category.id === activeCategory || category.name === activeCategory);
   const localProducts = useMemo(() => {
-    let result = products.filter((product) => {
-      const category = categoryMap.get(product.category);
-      return product.isLocalProduct && category?.active !== false && !category?.comingSoon;
-    });
+    let result = products.filter((product) => product.isLocalProduct && isProductCategoryVisible(product, categoryLookups));
     if (activeCategory !== 'الكل') {
-      result = result.filter(p =>
-        p.name.toLowerCase().includes(activeCategory.toLowerCase()) ||
-        p.keywords.some(k => k.toLowerCase().includes(activeCategory.toLowerCase()))
-      );
+      if (!selectedCategory || selectedCategory.comingSoon) return [];
+      result = result.filter((product) => productMatchesCategory(product, selectedCategory, categoryLookups));
     }
     return result;
-  }, [activeCategory, categoryMap, products]);
+  }, [activeCategory, categoryLookups, products, selectedCategory]);
 
   return (
     <div className="pb-24 lg:pb-16">
@@ -46,7 +50,10 @@ export default function LocalProducts() {
       {/* Category Filter */}
       <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-          {localCategories.map((cat) => (
+          {['الكل', ...activeCategories.map((category) => category.id)].map((cat) => {
+            const category = cat === 'الكل' ? undefined : activeCategories.find((item) => item.id === cat);
+            const label = category?.name || cat;
+            return (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
@@ -56,9 +63,11 @@ export default function LocalProducts() {
                   : 'bg-cream-warm text-charcoal border border-sand hover:border-olive'
               }`}
             >
-              {cat}
+              {label}
+              {category?.comingSoon && <span className="mr-1 text-[10px] font-black">قريبًا</span>}
             </button>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -68,11 +77,15 @@ export default function LocalProducts() {
           <Heart className="w-4 h-4 text-olive" />
           <span className="text-sm text-charcoal-muted">{localProducts.length} منتج بلدي</span>
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {localProducts.map((product) => (
-            <ProductCard key={product.id} product={product} onQuickView={(p) => { setSelectedProduct(p); setQuickViewOpen(true); }} />
-          ))}
-        </div>
+        {localProducts.length === 0 ? (
+          <EmptyState title="لا توجد منتجات بلدي" description="سيتم عرض المنتجات البلدي هنا بعد إضافتها من الأدمن." />
+        ) : (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {localProducts.map((product) => (
+              <ProductCard key={product.id} product={product} onQuickView={(p) => { setSelectedProduct(p); setQuickViewOpen(true); }} />
+            ))}
+          </div>
+        )}
       </div>
 
       <QuickViewModal product={selectedProduct} isOpen={quickViewOpen} onClose={() => setQuickViewOpen(false)} />
