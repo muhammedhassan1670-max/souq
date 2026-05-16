@@ -1,6 +1,7 @@
 import { categories as seedCategories } from '@/data/categories';
 import type { Category } from '@/data/types';
-import { isSupabaseConfigured, requireSupabase, supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase';
+import { subscribeToTableChanges } from '@/services/realtimeService';
 
 type CategoryRow = {
   id: string;
@@ -103,14 +104,5 @@ export async function deleteCategory(id: string) {
 }
 
 export function subscribeToCategories(onChange: () => void) {
-  if (!supabase) return () => undefined;
-  const client = supabase;
-  const channel = client
-    .channel('categories-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, onChange)
-    .subscribe();
-
-  return () => {
-    client.removeChannel(channel);
-  };
+  return subscribeToTableChanges('categories-changes', ['categories'], onChange);
 }

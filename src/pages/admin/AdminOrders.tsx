@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { MessageCircle, Printer, RefreshCcw, Search } from 'lucide-react';
 import { listOrders, updateOrderStatus, type OrderRecord, type OrderStatus } from '@/services/ordersService';
 import { generateWhatsAppLink } from '@/utils/whatsapp';
@@ -6,11 +7,17 @@ import { generateWhatsAppLink } from '@/utils/whatsapp';
 const statuses: OrderStatus[] = ['جديد', 'تم استلام الطلب', 'جاري التجهيز', 'خرج للتوصيل', 'تم التسليم', 'ملغي'];
 
 export default function AdminOrders() {
+  const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const nextStatus = searchParams.get('status');
+    if (nextStatus && statuses.includes(nextStatus as OrderStatus)) setStatus(nextStatus);
+  }, [searchParams]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -117,7 +124,7 @@ export default function AdminOrders() {
                   <p className="text-sm font-bold text-charcoal">{order.customerName} • {order.customerPhone}</p>
                   <p className="text-xs font-semibold text-charcoal-muted">{order.address}</p>
                 </div>
-                <span className="rounded-full bg-cream-warm px-3 py-1 text-xs font-black text-charcoal">{order.status}</span>
+                <span className={`rounded-full px-3 py-1 text-xs font-black ${statusClass(order.status)}`}>{order.status}</span>
               </div>
               <div className="mt-3 rounded-xl bg-cream p-3">
                 {order.items.length > 0 ? order.items.map((item) => (
@@ -156,4 +163,11 @@ export default function AdminOrders() {
       )}
     </div>
   );
+}
+
+function statusClass(status: OrderStatus) {
+  if (status === 'جديد') return 'bg-blue-50 text-blue-700';
+  if (status === 'تم استلام الطلب' || status === 'جاري التجهيز' || status === 'خرج للتوصيل') return 'bg-clay/10 text-clay-dark';
+  if (status === 'تم التسليم') return 'bg-success/10 text-success';
+  return 'bg-error/10 text-error';
 }

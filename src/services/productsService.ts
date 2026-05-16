@@ -1,6 +1,7 @@
 import { products as seedProducts } from '@/data/products';
 import type { Product } from '@/data/types';
-import { isSupabaseConfigured, requireSupabase, supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase';
+import { subscribeToTableChanges } from '@/services/realtimeService';
 
 type ProductRow = {
   id: string;
@@ -163,14 +164,5 @@ function toProductRow(input: ProductInput) {
 }
 
 export function subscribeToProducts(onChange: () => void) {
-  if (!supabase) return () => undefined;
-  const client = supabase;
-  const channel = client
-    .channel('products-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, onChange)
-    .subscribe();
-
-  return () => {
-    client.removeChannel(channel);
-  };
+  return subscribeToTableChanges('products-changes', ['products'], onChange);
 }

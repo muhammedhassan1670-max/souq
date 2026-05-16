@@ -1,5 +1,6 @@
 import { defaultSettings, type MarketSettings } from './marketStore';
-import { isSupabaseConfigured, requireSupabase, supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase';
+import { subscribeToTableChanges } from '@/services/realtimeService';
 
 const SETTINGS_CACHE_KEY = 'souq-elbalad-settings-cache';
 
@@ -58,14 +59,5 @@ export async function saveSettings(settings: AppSettings) {
 }
 
 export function subscribeToSettings(onChange: () => void) {
-  if (!supabase) return () => undefined;
-  const client = supabase;
-  const channel = client
-    .channel('settings-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, onChange)
-    .subscribe();
-
-  return () => {
-    client.removeChannel(channel);
-  };
+  return subscribeToTableChanges('settings-changes', ['settings'], onChange);
 }

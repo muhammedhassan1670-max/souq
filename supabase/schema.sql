@@ -94,6 +94,18 @@ create table if not exists public.order_items (
   total_price numeric
 );
 
+create table if not exists public.product_price_history (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid references public.products(id) on delete cascade,
+  old_price numeric,
+  new_price numeric,
+  old_old_price numeric,
+  new_old_price numeric,
+  change_source text,
+  changed_at timestamp default now(),
+  changed_by uuid
+);
+
 create table if not exists public.settings (
   id uuid primary key default gen_random_uuid(),
   key text unique,
@@ -174,12 +186,14 @@ create index if not exists idx_products_flags on public.products(active, availab
 create index if not exists idx_orders_status_created on public.orders(status, created_at desc);
 create index if not exists idx_orders_phone on public.orders(customer_phone);
 create index if not exists idx_order_items_order on public.order_items(order_id);
+create index if not exists idx_product_price_history_product on public.product_price_history(product_id, changed_at desc);
 
 alter table public.categories enable row level security;
 alter table public.shops enable row level security;
 alter table public.products enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
+alter table public.product_price_history enable row level security;
 alter table public.settings enable row level security;
 alter table public.custom_requests enable row level security;
 alter table public.seller_requests enable row level security;
@@ -239,6 +253,10 @@ for insert with check (true);
 drop policy if exists "Admins read order items" on public.order_items;
 create policy "Admins read order items" on public.order_items
 for select using (auth.role() = 'authenticated');
+
+drop policy if exists "Admins manage product price history" on public.product_price_history;
+create policy "Admins manage product price history" on public.product_price_history
+for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 
 drop policy if exists "Public can read settings" on public.settings;
 create policy "Public can read settings" on public.settings

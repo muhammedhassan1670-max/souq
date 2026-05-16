@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ImagePlus, Plus, RefreshCcw, Save, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, ImagePlus, Plus, RefreshCcw, Save, Search, TimerReset, Trash2 } from 'lucide-react';
 import type { Category } from '@/data/types';
 import { createCategory, deleteCategory, listCategories, updateCategory } from '@/services/categoriesService';
 import { uploadMarketImage } from '@/services/uploadService';
@@ -28,9 +28,13 @@ const emptyForm: CategoryForm = {
 export default function AdminCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [form, setForm] = useState<CategoryForm>(emptyForm);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'soon' | 'hidden'>('all');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const refresh = async () => setCategories(await listCategories());
 
@@ -43,6 +47,8 @@ export default function AdminCategories() {
       setError('اسم القسم مطلوب');
       return;
     }
+    setSaving(true);
+    setError('');
     try {
       const payload = {
         name: form.name,
@@ -60,6 +66,48 @@ export default function AdminCategories() {
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'فشل حفظ القسم');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredCategories = categories.filter((category) => {
+    const q = search.trim().toLowerCase();
+    const matchesSearch = !q || category.name.toLowerCase().includes(q) || (category.slug || '').toLowerCase().includes(q);
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'open' && category.active !== false && !category.comingSoon) ||
+      (statusFilter === 'soon' && category.comingSoon) ||
+      (statusFilter === 'hidden' && category.active === false);
+    return matchesSearch && matchesStatus;
+  });
+
+  const stats = {
+    all: categories.length,
+    open: categories.filter((category) => category.active !== false && !category.comingSoon).length,
+    soon: categories.filter((category) => category.comingSoon).length,
+    hidden: categories.filter((category) => category.active === false).length,
+  };
+
+  const updateCategoryStatus = async (category: Category, changes: Partial<Pick<Category, 'active' | 'comingSoon'>>) => {
+    setBusyId(category.id);
+    setError('');
+    try {
+      await updateCategory(category.id, {
+        name: category.name,
+        slug: category.slug,
+        icon: category.icon,
+        imageUrl: category.imageUrl,
+        active: changes.active ?? category.active ?? true,
+        comingSoon: changes.comingSoon ?? category.comingSoon ?? false,
+        sortOrder: category.sortOrder ?? 0,
+      });
+      setNotice('تم تحديث حالة القسم');
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'فشل تحديث القسم');
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -78,7 +126,7 @@ export default function AdminCategories() {
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-[360px_1fr]">
+    <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
       <div className="rounded-2xl border border-sand bg-white p-4 shadow-card">
         <h2 className="mb-4 text-lg font-black">{form.id ? 'تعديل قسم' : 'قسم جديد'}</h2>
         {notice && <p className="mb-3 rounded-xl bg-success/10 p-2 text-sm font-bold text-success">{notice}</p>}
@@ -105,14 +153,56 @@ export default function AdminCategories() {
             </span>
             <input type="checkbox" checked={form.comingSoon} onChange={(event) => setForm({ ...form, comingSoon: event.target.checked })} />
           </label>
-          <button onClick={() => void save()} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-olive text-sm font-black text-white">
+          <button
+            onClick={() => void save()}
+            disabled={saving || uploading}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-olive text-sm font-black text-white disabled:opacity-60"
+          >
             <Save className="h-4 w-4" />
-            حفظ
+            {saving ? 'جاري الحفظ...' : 'حفظ'}
           </button>
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <Stat label="كل الأقسام" value={stats.all} />
+          <Stat label="مفتوح" value={stats.open} tone="success" />
+          <Stat label="قريبًا" value={stats.soon} tone="warm" />
+          <Stat label="مخفي" value={stats.hidden} tone="danger" />
+        </div>
+
+        <div className="rounded-2xl border border-sand bg-white p-3 shadow-card">
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-olive" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="ابحث باسم القسم أو slug"
+              className="h-11 w-full rounded-xl border border-sand bg-cream pr-9 pl-3 text-sm font-bold outline-none focus:border-olive"
+            />
+          </div>
+          <div className="mt-3 flex gap-2 overflow-x-auto no-scrollbar">
+            {[
+              { value: 'all', label: 'الكل' },
+              { value: 'open', label: 'مفتوح' },
+              { value: 'soon', label: 'قريبًا' },
+              { value: 'hidden', label: 'مخفي' },
+            ].map((item) => (
+              <button
+                key={item.value}
+                onClick={() => setStatusFilter(item.value as typeof statusFilter)}
+                className={`h-9 flex-shrink-0 rounded-full px-3 text-xs font-black ${
+                  statusFilter === item.value ? 'bg-olive text-white' : 'border border-sand bg-white text-charcoal'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
         {categories.length === 0 ? (
           <div className="rounded-2xl border border-sand bg-white p-8 text-center shadow-card">
             <p className="text-lg font-black text-charcoal">لا توجد أقسام</p>
@@ -122,7 +212,12 @@ export default function AdminCategories() {
               تحديث
             </button>
           </div>
-        ) : categories.map((category) => (
+        ) : filteredCategories.length === 0 ? (
+          <div className="rounded-2xl border border-sand bg-white p-8 text-center shadow-card">
+            <p className="text-lg font-black text-charcoal">لا توجد نتائج</p>
+            <p className="mt-1 text-sm font-bold text-charcoal-muted">غيّر البحث أو فلتر الحالة.</p>
+          </div>
+        ) : filteredCategories.map((category) => (
           <div key={category.id} className="rounded-2xl border border-sand bg-white p-4 shadow-card">
             <div className="flex items-start justify-between gap-2">
               <h3 className="font-black">{category.name}</h3>
@@ -133,6 +228,24 @@ export default function AdminCategories() {
               </span>
             </div>
             <p className="text-xs font-bold text-charcoal-muted">{category.slug || 'بدون slug'} • ترتيب {category.sortOrder ?? 0}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                onClick={() => void updateCategoryStatus(category, { active: category.active === false })}
+                disabled={busyId === category.id}
+                className="flex h-10 items-center justify-center gap-1 rounded-xl bg-cream-warm text-xs font-black text-charcoal disabled:opacity-60"
+              >
+                {category.active === false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                {category.active === false ? 'إظهار' : 'إخفاء'}
+              </button>
+              <button
+                onClick={() => void updateCategoryStatus(category, { comingSoon: !category.comingSoon, active: true })}
+                disabled={busyId === category.id}
+                className="flex h-10 items-center justify-center gap-1 rounded-xl bg-clay/10 text-xs font-black text-clay-dark disabled:opacity-60"
+              >
+                <TimerReset className="h-4 w-4" />
+                {category.comingSoon ? 'فتح القسم' : 'قريبًا'}
+              </button>
+            </div>
             <div className="mt-3 flex gap-2">
               <button onClick={() => setForm({ id: category.id, name: category.name, slug: category.slug || '', icon: category.icon, imageUrl: category.imageUrl || '', active: category.active ?? true, comingSoon: category.comingSoon ?? false, sortOrder: String(category.sortOrder ?? 0) })} className="h-10 flex-1 rounded-xl bg-cream-warm text-sm font-black">تعديل</button>
               <button onClick={() => { if (confirm('حذف القسم؟')) void deleteCategory(category.id).then(refresh); }} className="flex h-10 w-11 items-center justify-center rounded-xl bg-error/10 text-error">
@@ -145,7 +258,23 @@ export default function AdminCategories() {
           <Plus className="h-4 w-4" />
           قسم جديد
         </button>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function Stat({ label, value, tone = 'plain' }: { label: string; value: number; tone?: 'plain' | 'success' | 'warm' | 'danger' }) {
+  const toneClass =
+    tone === 'success' ? 'bg-success/10 text-success' :
+    tone === 'warm' ? 'bg-clay/10 text-clay-dark' :
+    tone === 'danger' ? 'bg-error/10 text-error' :
+    'bg-cream-warm text-charcoal';
+
+  return (
+    <div className="rounded-2xl border border-sand bg-white p-3 shadow-card">
+      <p className={`w-fit rounded-full px-2 py-1 text-xs font-black ${toneClass}`}>{label}</p>
+      <p className="mt-2 text-2xl font-black text-charcoal">{value}</p>
     </div>
   );
 }

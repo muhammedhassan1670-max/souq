@@ -1,6 +1,7 @@
 import type { CartItem } from '@/data/types';
-import { isSupabaseConfigured, requireSupabase, supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase';
 import { loadMarketState, saveMarketState } from './marketStore';
+import { subscribeToTableChanges } from '@/services/realtimeService';
 
 export type OrderStatus =
   | 'جديد'
@@ -234,17 +235,7 @@ function applyOrderFilters(orders: OrderRecord[], filters: { search?: string; st
 }
 
 export function subscribeToOrders(onChange: () => void) {
-  if (!supabase) return () => undefined;
-  const client = supabase;
-  const channel = client
-    .channel('orders-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, onChange)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, onChange)
-    .subscribe();
-
-  return () => {
-    client.removeChannel(channel);
-  };
+  return subscribeToTableChanges('orders-changes', ['orders', 'order_items'], onChange);
 }
 
 export async function createCustomRequest(input: {

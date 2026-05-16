@@ -31,6 +31,9 @@ import AdminCategories from '@/pages/admin/AdminCategories';
 import AdminShops from '@/pages/admin/AdminShops';
 import AdminOrders from '@/pages/admin/AdminOrders';
 import AdminSettings from '@/pages/admin/AdminSettings';
+import AdminOffers from '@/pages/admin/AdminOffers';
+import AdminInventory from '@/pages/admin/AdminInventory';
+import AdminRequests from '@/pages/admin/AdminRequests';
 import { getSettings } from '@/services/settingsService';
 
 function AppLayout() {
@@ -74,9 +77,12 @@ function AppLayout() {
             <Route path="/admin" element={<AdminShell />}>
               <Route index element={<AdminDashboard />} />
               <Route path="products" element={<AdminProducts />} />
+              <Route path="offers" element={<AdminOffers />} />
+              <Route path="inventory" element={<AdminInventory />} />
               <Route path="categories" element={<AdminCategories />} />
               <Route path="shops" element={<AdminShops />} />
               <Route path="orders" element={<AdminOrders />} />
+              <Route path="requests" element={<AdminRequests />} />
               <Route path="settings" element={<AdminSettings />} />
             </Route>
           </Route>
