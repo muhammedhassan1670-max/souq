@@ -317,7 +317,7 @@ export default function Home() {
                   </span>
                 )}
                 <CategoryVisual imageUrl={category.imageUrl} icon={category.icon} label={category.name} toneClass={toneClass} />
-                <span className="mt-auto flex min-h-[52px] items-center justify-center rounded-xl bg-cream/80 px-2 py-2 text-sm font-black leading-5 text-charcoal transition group-hover:bg-olive/10 group-hover:text-olive-dark">
+                <span className="mt-auto flex min-h-[52px] items-center justify-center rounded-xl border border-sand/70 bg-sahar/12 px-2 py-2 text-sm font-black leading-5 text-charcoal shadow-xs transition group-hover:border-olive/25 group-hover:bg-olive/12 group-hover:text-olive-dark">
                   <span className="line-clamp-2">{category.name}</span>
                 </span>
               </button>
