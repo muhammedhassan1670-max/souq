@@ -15,6 +15,7 @@ import {
   Plus,
   Save,
   Search,
+  SlidersHorizontal,
   Trash2,
   X,
   Zap,
@@ -153,6 +154,7 @@ export default function AdminProducts() {
   const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>('all');
   const [offerFilter, setOfferFilter] = useState<OfferFilter>('all');
   const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -276,28 +278,6 @@ export default function AdminProducts() {
   const categoryById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
   const shopById = useMemo(() => new Map(shops.map((shop) => [String(shop.id), shop])), [shops]);
 
-  const stats = useMemo(() => {
-    const missingImage = products.filter((product) => !hasRealImage(product)).length;
-    const missingPrice = products.filter((product) => hasMissingPrice(product)).length;
-    const missingData = products.filter((product) => hasMissingData(product)).length;
-    const stale = products.filter((product) => isOlderThan(product.updatedAt || product.createdAt, 30)).length;
-    const offerMissingOldPrice = products.filter((product) => product.isOffer && !product.oldPrice).length;
-    const lowStock = products.filter((product) => product.available && Number(product.stockQuantity ?? 0) > 0 && Number(product.stockQuantity ?? 0) <= 3).length;
-
-    return {
-      total: products.length,
-      available: products.filter((product) => product.available).length,
-      unavailable: products.filter((product) => !product.available).length,
-      offers: products.filter((product) => product.isOffer).length,
-      missingImage,
-      missingPrice,
-      missingData,
-      stale,
-      offerMissingOldPrice,
-      lowStock,
-    };
-  }, [products]);
-
   const filteredProducts = useMemo(() => {
     const q = normalizeSearch(debouncedSearch);
     return products.filter((product) => {
@@ -357,6 +337,11 @@ export default function AdminProducts() {
   const visibleProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const selectedProducts = products.filter((product) => selectedIds.has(String(product.id)));
   const visiblePriceDraftCount = visibleProducts.filter((product) => priceDrafts[String(product.id)]).length;
+  const hasAdvancedFilters =
+    shopFilter !== 'all' ||
+    availabilityFilter !== 'all' ||
+    offerFilter !== 'all' ||
+    quickFilter !== 'all';
   const quickSimilarProducts = useMemo(
     () => findSimilarProducts(quickForm.name, products).slice(0, 4),
     [products, quickForm.name],
@@ -856,6 +841,14 @@ export default function AdminProducts() {
     }
   };
 
+  const resetProductFilters = () => {
+    setCategoryFilter('all');
+    setShopFilter('all');
+    setAvailabilityFilter('all');
+    setOfferFilter('all');
+    setQuickFilter('all');
+  };
+
   return (
     <div className="space-y-4">
       {!isSupabaseConfigured && (
@@ -867,22 +860,21 @@ export default function AdminProducts() {
       {notice && <Notice tone="success" onClose={() => setNotice('')}>{notice}</Notice>}
       {error && <Notice tone="error" onClose={() => setError('')}>{error}</Notice>}
 
-      <DailyPriceReview
-        stats={stats}
-        onFilter={(filter) => setQuickFilter(filter)}
-      />
-
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-        <SummaryCard label="إجمالي المنتجات" value={stats.total} />
-        <SummaryCard label="متاحة" value={stats.available} tone="success" />
-        <SummaryCard label="غير متاحة" value={stats.unavailable} tone="danger" />
-        <SummaryCard label="عليها عروض" value={stats.offers} tone="warm" />
-        <SummaryCard label="بدون صورة" value={stats.missingImage} tone="danger" />
-        <SummaryCard label="سعر ناقص" value={stats.missingPrice} tone="warn" />
-      </section>
-
       <section className="rounded-2xl border border-sand bg-white p-3 shadow-card">
-        <div className="grid gap-2 lg:grid-cols-[1.4fr_180px_180px_160px_150px]">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-black text-charcoal">المنتجات</h1>
+            <p className="mt-1 text-sm font-bold text-charcoal-muted">بحث سريع وإضافة وتعديل المنتجات. الإحصائيات والتنبيهات في الرئيسية.</p>
+          </div>
+          <button
+            onClick={() => navigate('/admin')}
+            className="h-10 rounded-xl border border-sand bg-cream px-3 text-xs font-black text-olive-dark transition hover:border-olive"
+          >
+            فتح الداشبورد
+          </button>
+        </div>
+
+        <div className="grid gap-2 lg:grid-cols-[1fr_220px_150px_150px]">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-olive" />
             <input
@@ -898,47 +890,71 @@ export default function AdminProducts() {
             <option value="all">كل الأقسام</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
           </ControlSelect>
-          <ControlSelect value={shopFilter} onChange={setShopFilter}>
-            <option value="all">كل المحلات</option>
-            {shops.map((shop) => <option key={shop.id} value={String(shop.id)}>{shop.name}</option>)}
-          </ControlSelect>
-          <ControlSelect value={availabilityFilter} onChange={(value) => setAvailabilityFilter(value as AvailabilityFilter)}>
-            <option value="all">كل الحالات</option>
-            <option value="available">متاح</option>
-            <option value="unavailable">خلصان</option>
-          </ControlSelect>
-          <ControlSelect value={offerFilter} onChange={(value) => setOfferFilter(value as OfferFilter)}>
-            <option value="all">كل العروض</option>
-            <option value="offers">عروض فقط</option>
-            <option value="not-offers">بدون عروض</option>
-          </ControlSelect>
-        </div>
-
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {quickFilters.map((filter) => (
-            <button
-              key={filter.value}
-              onClick={() => setQuickFilter(filter.value)}
-              className={`h-9 flex-shrink-0 rounded-full px-3 text-xs font-black ${
-                quickFilter === filter.value ? 'bg-olive text-white' : 'border border-sand bg-white text-charcoal hover:border-olive'
-              }`}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
           <AdminButton onClick={openQuickAdd} icon={<Zap className="h-4 w-4" />} tone="clay" title="Ctrl + N">إضافة سريعة</AdminButton>
-          <AdminButton onClick={openQuickAdd} icon={<Copy className="h-4 w-4" />} tone="plain">إضافة من قالب</AdminButton>
           <AdminButton onClick={openNew} icon={<Plus className="h-4 w-4" />}>إضافة منتج</AdminButton>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowAdvancedFilters((prev) => !prev)}
+            className={`flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-black transition ${
+              showAdvancedFilters || hasAdvancedFilters ? 'bg-olive text-white' : 'border border-sand bg-white text-charcoal hover:border-olive'
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            فلاتر
+            {hasAdvancedFilters && <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px]">نشطة</span>}
+          </button>
           <AdminButton onClick={togglePriceUpdateMode} icon={<Edit3 className="h-4 w-4" />} tone={priceUpdateMode ? 'clay' : 'plain'}>
-            وضع تحديث الأسعار
+            تحديث الأسعار
           </AdminButton>
-          <AdminButton onClick={() => setShowBulk(true)} icon={<Percent className="h-4 w-4" />} disabled={selectedIds.size === 0}>تحديث أسعار جماعي</AdminButton>
-          <AdminButton onClick={() => setShowExport(true)} icon={<Download className="h-4 w-4" />} tone="plain">تصدير المنتجات</AdminButton>
+          {selectedIds.size > 0 && (
+            <AdminButton onClick={() => setShowBulk(true)} icon={<Percent className="h-4 w-4" />}>تحديث جماعي</AdminButton>
+          )}
+          <AdminButton onClick={() => setShowExport(true)} icon={<Download className="h-4 w-4" />} tone="plain">تصدير</AdminButton>
           <AdminButton onClick={() => setShowImport(true)} icon={<FileUp className="h-4 w-4" />} tone="plain">استيراد CSV</AdminButton>
         </div>
+
+        {(showAdvancedFilters || hasAdvancedFilters) && (
+          <div className="mt-3 rounded-2xl border border-sand bg-cream p-3">
+            <div className="grid gap-2 md:grid-cols-3">
+              <ControlSelect value={shopFilter} onChange={setShopFilter}>
+                <option value="all">كل المحلات</option>
+                {shops.map((shop) => <option key={shop.id} value={String(shop.id)}>{shop.name}</option>)}
+              </ControlSelect>
+              <ControlSelect value={availabilityFilter} onChange={(value) => setAvailabilityFilter(value as AvailabilityFilter)}>
+                <option value="all">كل الحالات</option>
+                <option value="available">متاح</option>
+                <option value="unavailable">خلصان</option>
+              </ControlSelect>
+              <ControlSelect value={offerFilter} onChange={(value) => setOfferFilter(value as OfferFilter)}>
+                <option value="all">كل العروض</option>
+                <option value="offers">عروض فقط</option>
+                <option value="not-offers">بدون عروض</option>
+              </ControlSelect>
+            </div>
+
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+              {quickFilters.map((filter) => (
+                <button
+                  key={filter.value}
+                  onClick={() => setQuickFilter(filter.value)}
+                  className={`h-9 flex-shrink-0 rounded-full px-3 text-xs font-black ${
+                    quickFilter === filter.value ? 'bg-olive text-white' : 'border border-sand bg-white text-charcoal hover:border-olive'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+
+            {hasAdvancedFilters && (
+              <button onClick={resetProductFilters} className="mt-2 h-9 rounded-xl bg-white px-3 text-xs font-black text-charcoal">
+                مسح الفلاتر
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       {priceUpdateMode && hasUnsavedPriceChanges && (
@@ -2182,53 +2198,6 @@ function FormSection({ title, children }: { title: string; children: ReactNode }
     <section className="rounded-2xl border border-sand bg-white p-3">
       <h3 className="mb-3 text-sm font-black text-olive-dark">{title}</h3>
       <div className="space-y-3">{children}</div>
-    </section>
-  );
-}
-
-function DailyPriceReview({
-  stats,
-  onFilter,
-}: {
-  stats: {
-    stale: number;
-    offerMissingOldPrice: number;
-    missingPrice: number;
-    unavailable: number;
-    missingImage: number;
-    lowStock: number;
-  };
-  onFilter: (filter: QuickFilter) => void;
-}) {
-  const items: Array<{ label: string; count: number; filter: QuickFilter }> = [
-    { label: 'منتج لم يتم تحديثه منذ 30 يوم', count: stats.stale, filter: 'stale' },
-    { label: 'عرض بدون سعر قديم', count: stats.offerMissingOldPrice, filter: 'offer-missing-old-price' },
-    { label: 'منتج سعره ناقص', count: stats.missingPrice, filter: 'missing-price' },
-    { label: 'منتج غير متوفر', count: stats.unavailable, filter: 'unavailable' },
-    { label: 'منتج بدون صورة', count: stats.missingImage, filter: 'no-image' },
-    { label: 'منتج كمية قليلة', count: stats.lowStock, filter: 'low-stock' },
-  ];
-
-  return (
-    <section className="rounded-2xl border border-sand bg-white p-3 shadow-card">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-black text-charcoal">مراجعة الأسعار اليومية</h2>
-          <p className="mt-1 text-sm font-bold text-charcoal-muted">اضغط على أي بند لعرض المنتجات المطلوبة بسرعة.</p>
-        </div>
-      </div>
-      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
-        {items.map((item) => (
-          <button
-            key={item.filter}
-            onClick={() => onFilter(item.filter)}
-            className="rounded-2xl border border-sand bg-cream p-3 text-right transition hover:border-olive hover:bg-white"
-          >
-            <p className="text-2xl font-black text-olive-dark">{item.count}</p>
-            <p className="mt-1 text-xs font-black text-charcoal-muted">{item.label}</p>
-          </button>
-        ))}
-      </div>
     </section>
   );
 }
