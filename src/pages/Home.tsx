@@ -166,9 +166,7 @@ export default function Home() {
   const quickSearchTerms = useMemo(() => getQuickSearchTerms(customerProducts, 5), [customerProducts]);
 
   const mostOrdered = useMemo(() => {
-    const featured = customerProducts.filter((product) => product.available && product.isFeatured);
-    const source = featured.length > 0 ? featured : customerProducts.filter((product) => product.available);
-    return source.slice(0, 8);
+    return customerProducts.filter((product) => product.available && product.isFeatured).slice(0, 8);
   }, [customerProducts]);
 
   const localProducts = useMemo(
@@ -402,7 +400,7 @@ export default function Home() {
         {isLoading ? (
           <LoadingGrid items={8} />
         ) : mostOrdered.length === 0 ? (
-          <EmptyState title="لا توجد منتجات" actionLabel="اطلب المنتج واتساب" onAction={handleWhatsAppOrder} />
+          <EmptyState title="لا توجد منتجات مميزة بعد" description="حدد منتجات كـ مميزة من لوحة الأدمن لتظهر هنا." />
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {mostOrdered.map((product) => (
