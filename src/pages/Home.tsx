@@ -80,7 +80,7 @@ function CategoryVisual({
 
   if (imageUrl && !imageFailed) {
     return (
-      <span className="mx-auto mb-3 block h-[104px] w-full max-w-[172px] overflow-hidden rounded-2xl border border-sand bg-cream-warm sm:h-[125px]">
+      <span className="mx-auto mb-3 block aspect-square w-full max-w-[160px] overflow-hidden rounded-2xl border border-sand bg-cream-warm">
         <img
           src={imageUrl}
           alt={label}
@@ -304,7 +304,7 @@ export default function Home() {
               <button
                 key={category.id}
                 onClick={() => handleCategoryClick(category.id)}
-                className={`relative min-h-[180px] rounded-2xl border p-3 text-center shadow-card transition hover:-translate-y-0.5 hover:shadow-elevated sm:min-h-[205px] ${
+                className={`relative min-h-[218px] rounded-2xl border p-3 text-center shadow-card transition hover:-translate-y-0.5 hover:shadow-elevated ${
                   comingSoon ? 'border-clay/25 bg-clay/5 hover:border-clay' : 'border-sand bg-white hover:border-olive'
                 }`}
               >
