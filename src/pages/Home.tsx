@@ -18,10 +18,12 @@ import {
   Sparkles,
   Store,
   Tag,
+  X,
 } from 'lucide-react';
 import { useMarketState } from '@/hooks/useMarketState';
 import ProductCard from '@/components/ProductCard';
 import { EmptyState, InlineError, LoadingGrid } from '@/components/DataState';
+import type { Category } from '@/data/types';
 import { generateWhatsAppLink } from '@/utils/whatsapp';
 import { getQuickSearchTerms, searchProducts } from '@/utils/productSearch';
 import { createCategoryLookups, getActiveCategories, isProductCategoryVisible } from '@/utils/categoryUtils';
@@ -102,6 +104,39 @@ function CategoryVisual({
   );
 }
 
+function CategoryCard({
+  category,
+  index,
+  onClick,
+}: {
+  category: Category;
+  index: number;
+  onClick: () => void;
+}) {
+  const comingSoon = category.comingSoon;
+  const toneClass = categoryToneClasses[index % categoryToneClasses.length];
+
+  return (
+    <button
+      key={category.id}
+      onClick={onClick}
+      className={`group relative flex min-h-[246px] flex-col items-stretch rounded-2xl border p-2.5 text-center shadow-card transition hover:-translate-y-0.5 hover:shadow-elevated ${
+        comingSoon ? 'border-clay/25 bg-clay/5 hover:border-clay/70' : 'border-sand bg-white hover:border-olive/60'
+      }`}
+    >
+      {comingSoon && (
+        <span className="absolute left-3 top-3 z-10 rounded-full bg-clay px-2.5 py-1 text-[10px] font-black text-white shadow-card">
+          قريبًا
+        </span>
+      )}
+      <CategoryVisual imageUrl={category.imageUrl} icon={category.icon} label={category.name} toneClass={toneClass} />
+      <span className="mt-auto flex min-h-[52px] items-center justify-center rounded-xl border border-[#D8BE8B] bg-[#F1DEB8] px-2 py-2 text-sm font-black leading-5 text-charcoal shadow-xs transition group-hover:border-olive/35 group-hover:bg-[#E7D5AA] group-hover:text-olive-dark">
+        <span className="line-clamp-2">{category.name}</span>
+      </span>
+    </button>
+  );
+}
+
 const categoryToneClasses = [
   'bg-sahar/15 text-sahar-dark',
   'bg-success/15 text-success',
@@ -115,9 +150,10 @@ export default function Home() {
   const { products, categories, settings, isLoading, error, refresh } = useMarketState();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [allCategoriesOpen, setAllCategoriesOpen] = useState(false);
 
   const categoryLookups = useMemo(() => createCategoryLookups(categories), [categories]);
-  const homeCategories = useMemo(() => getActiveCategories(categories).slice(0, 8), [categories]);
+  const homeCategories = useMemo(() => getActiveCategories(categories), [categories]);
   const customerProducts = useMemo(
     () => products.filter((product) => isProductCategoryVisible(product, categoryLookups)),
     [categoryLookups, products],
@@ -154,6 +190,11 @@ export default function Home() {
 
   const handleCategoryClick = (categoryId: string) => {
     navigate('/products', { state: { category: categoryId } });
+  };
+
+  const openCategory = (categoryId: string) => {
+    setAllCategoriesOpen(false);
+    handleCategoryClick(categoryId);
   };
 
   return (
@@ -294,38 +335,63 @@ export default function Home() {
         title="الأقسام المهمة"
         subtitle="اختار اللي محتاجه بسرعة"
         actionLabel="عرض كل الأقسام"
-        onAction={() => navigate('/products')}
+        onAction={() => setAllCategoriesOpen(true)}
       >
         {homeCategories.length === 0 ? (
           <EmptyState title="لم يتم إضافة أقسام بعد" description="أضف أول قسم من لوحة الأدمن ليظهر هنا." />
         ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {homeCategories.map((category, index) => {
-            const comingSoon = category.comingSoon;
-            const toneClass = categoryToneClasses[index % categoryToneClasses.length];
-            return (
-              <button
+        <div className="relative">
+          <div className="grid auto-cols-[minmax(168px,72vw)] grid-flow-col gap-3 overflow-x-auto pb-3 no-scrollbar sm:auto-cols-[210px] lg:auto-cols-[220px]">
+            {homeCategories.map((category, index) => (
+              <CategoryCard
                 key={category.id}
+                category={category}
+                index={index}
                 onClick={() => handleCategoryClick(category.id)}
-                className={`group relative flex min-h-[246px] flex-col items-stretch rounded-2xl border p-2.5 text-center shadow-card transition hover:-translate-y-0.5 hover:shadow-elevated ${
-                  comingSoon ? 'border-clay/25 bg-clay/5 hover:border-clay/70' : 'border-sand bg-white hover:border-olive/60'
-                }`}
-              >
-                {comingSoon && (
-                  <span className="absolute left-3 top-3 z-10 rounded-full bg-clay px-2.5 py-1 text-[10px] font-black text-white shadow-card">
-                    قريبًا
-                  </span>
-                )}
-                <CategoryVisual imageUrl={category.imageUrl} icon={category.icon} label={category.name} toneClass={toneClass} />
-                <span className="mt-auto flex min-h-[52px] items-center justify-center rounded-xl border border-[#D8BE8B] bg-[#F1DEB8] px-2 py-2 text-sm font-black leading-5 text-charcoal shadow-xs transition group-hover:border-olive/35 group-hover:bg-[#E7D5AA] group-hover:text-olive-dark">
-                  <span className="line-clamp-2">{category.name}</span>
-                </span>
-              </button>
-            );
-          })}
+              />
+            ))}
+          </div>
+          {homeCategories.length > 5 && (
+            <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-16 bg-gradient-to-r from-cream to-transparent lg:block" />
+          )}
         </div>
         )}
       </SectionShell>
+
+      {allCategoriesOpen && (
+        <div className="fixed inset-0 z-[90] flex items-end bg-charcoal/45 p-3 backdrop-blur-sm sm:items-center sm:p-6" onClick={() => setAllCategoriesOpen(false)}>
+          <div
+            className="mx-auto max-h-[86vh] w-full max-w-5xl overflow-hidden rounded-3xl border border-sand bg-cream shadow-elevated"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-sand bg-white px-4 py-3 sm:px-5">
+              <div>
+                <h3 className="text-lg font-black text-charcoal">كل الأقسام</h3>
+                <p className="mt-1 text-xs font-bold text-charcoal-muted">اختار القسم اللي محتاجه من كل أقسام السوق.</p>
+              </div>
+              <button
+                onClick={() => setAllCategoriesOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-cream-warm text-charcoal transition hover:bg-sand"
+                aria-label="إغلاق"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="max-h-[72vh] overflow-y-auto p-4 sm:p-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {homeCategories.map((category, index) => (
+                  <CategoryCard
+                    key={category.id}
+                    category={category}
+                    index={index}
+                    onClick={() => openCategory(category.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <SectionShell
         title="الأكثر طلبًا في البلد"
