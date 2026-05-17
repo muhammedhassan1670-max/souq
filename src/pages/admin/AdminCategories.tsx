@@ -25,6 +25,22 @@ const emptyForm: CategoryForm = {
   sortOrder: '0',
 };
 
+const iconOptions = [
+  { label: 'سلة مشتريات', value: 'ShoppingBag' },
+  { label: 'سلة منتجات', value: 'ShoppingBasket' },
+  { label: 'خضار / ورقيات', value: 'Leaf' },
+  { label: 'فاكهة', value: 'Apple' },
+  { label: 'لحوم', value: 'Beef' },
+  { label: 'أسماك', value: 'Fish' },
+  { label: 'منظفات / لمعة', value: 'Sparkles' },
+  { label: 'منزل', value: 'Home' },
+  { label: 'أطفال', value: 'Baby' },
+  { label: 'منتجات محلية', value: 'Heart' },
+  { label: 'محل', value: 'Store' },
+  { label: 'عروض', value: 'Tag' },
+  { label: 'عام / صندوق', value: 'Package' },
+];
+
 export default function AdminCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [form, setForm] = useState<CategoryForm>(emptyForm);
@@ -134,7 +150,7 @@ export default function AdminCategories() {
         <div className="space-y-3">
           <Field label="اسم القسم" value={form.name} onChange={(value) => setForm({ ...form, name: value })} />
           <Field label="Slug" value={form.slug} onChange={(value) => setForm({ ...form, slug: value })} />
-          <Field label="Icon" value={form.icon} onChange={(value) => setForm({ ...form, icon: value })} />
+          <IconSelect value={form.icon} onChange={(value) => setForm({ ...form, icon: value })} />
           <Field label="ترتيب الظهور" type="number" value={form.sortOrder} onChange={(value) => setForm({ ...form, sortOrder: value })} />
           <img src={form.imageUrl || '/images/hero/hero-bg.jpg'} className="h-24 w-full rounded-xl object-cover" />
           <label className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-olive text-sm font-black text-olive-dark">
@@ -275,6 +291,28 @@ function Stat({ label, value, tone = 'plain' }: { label: string; value: number; 
     <div className="rounded-2xl border border-sand bg-white p-3 shadow-card">
       <p className={`w-fit rounded-full px-2 py-1 text-xs font-black ${toneClass}`}>{label}</p>
       <p className="mt-2 text-2xl font-black text-charcoal">{value}</p>
+    </div>
+  );
+}
+
+function IconSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const hasCustomIcon = value && !iconOptions.some((option) => option.value === value);
+
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-black">الأيقونة</label>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-11 w-full rounded-xl border border-sand bg-white px-3 text-sm font-bold outline-none focus:border-olive"
+      >
+        {hasCustomIcon && <option value={value}>أيقونة محفوظة: {value}</option>}
+        {iconOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
