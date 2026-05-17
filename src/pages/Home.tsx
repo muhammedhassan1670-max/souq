@@ -80,21 +80,24 @@ function CategoryVisual({
 
   if (imageUrl && !imageFailed) {
     return (
-      <span className="mx-auto mb-3 block aspect-square w-full max-w-[160px] overflow-hidden rounded-2xl border border-sand bg-cream-warm">
+      <span className="relative mx-auto mb-2.5 block aspect-square w-full max-w-[160px] overflow-hidden rounded-2xl border border-sand/80 bg-cream-warm">
         <img
           src={imageUrl}
           alt={label}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]"
           loading="lazy"
           onError={() => setImageFailed(true)}
         />
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-charcoal/15 to-transparent" />
       </span>
     );
   }
 
   return (
-    <span className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full ${toneClass}`}>
-      <CategoryFallbackIcon icon={icon} />
+    <span className={`mx-auto mb-2.5 flex aspect-square w-full max-w-[160px] items-center justify-center rounded-2xl border border-sand/80 ${toneClass}`}>
+      <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/75 shadow-xs">
+        <CategoryFallbackIcon icon={icon} />
+      </span>
     </span>
   );
 }
@@ -304,17 +307,19 @@ export default function Home() {
               <button
                 key={category.id}
                 onClick={() => handleCategoryClick(category.id)}
-                className={`relative min-h-[218px] rounded-2xl border p-3 text-center shadow-card transition hover:-translate-y-0.5 hover:shadow-elevated ${
-                  comingSoon ? 'border-clay/25 bg-clay/5 hover:border-clay' : 'border-sand bg-white hover:border-olive'
+                className={`group relative flex min-h-[246px] flex-col items-stretch rounded-2xl border p-2.5 text-center shadow-card transition hover:-translate-y-0.5 hover:shadow-elevated ${
+                  comingSoon ? 'border-clay/25 bg-clay/5 hover:border-clay/70' : 'border-sand bg-white hover:border-olive/60'
                 }`}
               >
                 {comingSoon && (
-                  <span className="absolute left-2 top-2 rounded-full bg-clay px-2 py-0.5 text-[10px] font-black text-white">
+                  <span className="absolute left-3 top-3 z-10 rounded-full bg-clay px-2.5 py-1 text-[10px] font-black text-white shadow-card">
                     قريبًا
                   </span>
                 )}
                 <CategoryVisual imageUrl={category.imageUrl} icon={category.icon} label={category.name} toneClass={toneClass} />
-                <span className="text-sm font-black leading-5 text-charcoal">{category.name}</span>
+                <span className="mt-auto flex min-h-[52px] items-center justify-center rounded-xl bg-cream/80 px-2 py-2 text-sm font-black leading-5 text-charcoal transition group-hover:bg-olive/10 group-hover:text-olive-dark">
+                  <span className="line-clamp-2">{category.name}</span>
+                </span>
               </button>
             );
           })}
