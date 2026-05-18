@@ -38,8 +38,8 @@ const STORAGE_KEY = 'souq-elbalad-market-state-v2';
 
 export const defaultSettings: MarketSettings = {
   siteName: 'سوق البلد',
-  whatsappNumber: '201000000000',
-  phoneNumber: '01000000000',
+  whatsappNumber: '01019851670',
+  phoneNumber: '01019851670',
   deliveryFee: 10,
   freeDeliveryMinimum: 500,
   ordersOpen: true,

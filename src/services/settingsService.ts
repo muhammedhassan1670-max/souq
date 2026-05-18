@@ -16,13 +16,13 @@ export const defaultAppSettings: AppSettings = {
 };
 
 export function cacheSettings(settings: AppSettings) {
-  localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(settings));
+  localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(normalizeAppSettings(settings)));
 }
 
 export function getCachedSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_CACHE_KEY);
-    return raw ? { ...defaultAppSettings, ...JSON.parse(raw) } : defaultAppSettings;
+    return raw ? normalizeAppSettings({ ...defaultAppSettings, ...JSON.parse(raw) }) : defaultAppSettings;
   } catch {
     return defaultAppSettings;
   }
@@ -43,8 +43,9 @@ export async function getSettings(): Promise<AppSettings> {
     (acc, row) => ({ ...acc, [row.key]: row.value }),
     { ...defaultAppSettings },
   );
-  cacheSettings(settings);
-  return settings;
+  const normalizedSettings = normalizeAppSettings(settings);
+  cacheSettings(normalizedSettings);
+  return normalizedSettings;
 }
 
 export async function saveSettings(settings: AppSettings) {
@@ -60,4 +61,18 @@ export async function saveSettings(settings: AppSettings) {
 
 export function subscribeToSettings(onChange: () => void) {
   return subscribeToTableChanges('settings-changes', ['settings'], onChange);
+}
+
+function normalizeAppSettings(settings: AppSettings): AppSettings {
+  return {
+    ...settings,
+    whatsappNumber: normalizeSavedPhone(settings.whatsappNumber, defaultAppSettings.whatsappNumber),
+    phoneNumber: normalizeSavedPhone(settings.phoneNumber, defaultAppSettings.phoneNumber),
+  };
+}
+
+function normalizeSavedPhone(value: string, fallback: string) {
+  const digits = String(value || '').replace(/\D/g, '');
+  const oldPlaceholders = new Set(['201000000000', '01000000000', '201234567890', '01234567890']);
+  return !digits || oldPlaceholders.has(digits) ? fallback : value;
 }

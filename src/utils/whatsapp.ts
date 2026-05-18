@@ -1,12 +1,22 @@
 import { getCachedSettings } from '@/services/settingsService';
 
 // WhatsApp configuration - easy to change
-export const WHATSAPP_NUMBER = '201234567890'; // Replace with actual number
+export const PLATFORM_PHONE_NUMBER = '01019851670';
+export const WHATSAPP_NUMBER = PLATFORM_PHONE_NUMBER;
+
+export const normalizeWhatsAppNumber = (value?: string): string => {
+  const digits = (value || WHATSAPP_NUMBER).replace(/\D/g, '');
+  if (!digits) return WHATSAPP_NUMBER.replace(/\D/g, '');
+  if (digits.startsWith('00')) return digits.slice(2);
+  if (digits.startsWith('0')) return `20${digits.slice(1)}`;
+  if (digits.startsWith('1') && digits.length === 10) return `20${digits}`;
+  return digits;
+};
 
 export const generateWhatsAppLink = (message: string, overrideNumber?: string): string => {
   const encodedMessage = encodeURIComponent(message);
   const settingsNumber = getCachedSettings().whatsappNumber;
-  const number = (overrideNumber || settingsNumber || WHATSAPP_NUMBER).replace(/\D/g, '');
+  const number = normalizeWhatsAppNumber(overrideNumber || settingsNumber || WHATSAPP_NUMBER);
   return `https://wa.me/${number}?text=${encodedMessage}`;
 };
 
@@ -56,6 +66,52 @@ ${itemsList}
 الدفع عند الاستلام
 
 📝 ملاحظات: ${formData.deliveryNotes || 'لا يوجد'}`;
+};
+
+type WhatsAppOrderStatus =
+  | 'جديد'
+  | 'تم استلام الطلب'
+  | 'جاري التجهيز'
+  | 'خرج للتوصيل'
+  | 'تم التسليم'
+  | 'ملغي';
+
+export const generateOrderStatusUpdateMessage = (order: {
+  orderNumber: string;
+  customerName?: string;
+  status: WhatsAppOrderStatus;
+  total: number;
+}): string => {
+  const detail =
+    order.status === 'جديد' ? 'وصلنا طلبك وهتتم مراجعته حالًا.' :
+    order.status === 'تم استلام الطلب' ? 'تم استلام الطلب وجاري تأكيده وتجهيزه.' :
+    order.status === 'جاري التجهيز' ? 'طلبك بيتجهز الآن.' :
+    order.status === 'خرج للتوصيل' ? 'طلبك خرج للتوصيل وفي الطريق ليك.' :
+    order.status === 'تم التسليم' ? 'تم تسليم الطلب. شكرًا لثقتك في سوق البلد.' :
+    'تم إلغاء الطلب. لو محتاج مساعدة ابعتلنا على واتساب.';
+
+  const timeline =
+    order.status === 'ملغي'
+      ? 'الحالة: ملغي'
+      : [
+          'مراحل الطلب:',
+          `1. تم استلام الطلب${isOrderStepDone(order.status, 'تم استلام الطلب') ? ' - تم' : ''}`,
+          `2. جاري التجهيز${isOrderStepDone(order.status, 'جاري التجهيز') ? ' - تم' : ''}`,
+          `3. خرج للتوصيل${isOrderStepDone(order.status, 'خرج للتوصيل') ? ' - تم' : ''}`,
+          `4. تم التسليم${isOrderStepDone(order.status, 'تم التسليم') ? ' - تم' : ''}`,
+        ].join('\n');
+
+  return `أهلاً ${order.customerName || 'عميلنا العزيز'}
+
+تحديث طلبك من سوق البلد
+رقم الطلب: ${order.orderNumber}
+الحالة الحالية: ${order.status}
+${detail}
+
+${timeline}
+
+إجمالي الطلب: ${order.total} جنيه
+الدفع عند الاستلام`;
 };
 
 export const generateCustomOrderMessage = (
@@ -133,3 +189,8 @@ export const openWhatsApp = (message: string): void => {
   const link = generateWhatsAppLink(message);
   window.open(link, '_blank');
 };
+
+function isOrderStepDone(status: WhatsAppOrderStatus, step: WhatsAppOrderStatus) {
+  const steps: WhatsAppOrderStatus[] = ['جديد', 'تم استلام الطلب', 'جاري التجهيز', 'خرج للتوصيل', 'تم التسليم'];
+  return steps.indexOf(status) >= steps.indexOf(step);
+}

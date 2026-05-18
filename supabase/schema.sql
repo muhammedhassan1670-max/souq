@@ -113,6 +113,14 @@ create table if not exists public.settings (
   updated_at timestamp default now()
 );
 
+insert into public.settings (key, value)
+values
+  ('whatsappNumber', to_jsonb('01019851670'::text)),
+  ('phoneNumber', to_jsonb('01019851670'::text))
+on conflict (key) do update
+set value = excluded.value,
+    updated_at = now();
+
 create table if not exists public.custom_requests (
   id uuid primary key default gen_random_uuid(),
   customer_name text,

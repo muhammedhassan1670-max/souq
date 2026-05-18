@@ -73,7 +73,6 @@ type QuickFilter =
   | 'offers'
   | 'unavailable'
   | 'no-image'
-  | 'local'
   | 'featured'
   | 'updated-today'
   | 'stale'
@@ -83,7 +82,7 @@ type QuickFilter =
   | 'low-stock';
 type BulkMode = 'increasePercent' | 'decreasePercent' | 'addFixed' | 'subtractFixed' | 'setOldPrice' | 'setOffer' | 'clearOffer';
 type InlineField = 'price' | 'oldPrice' | 'stockQuantity';
-type ProductTemplate = 'grocery' | 'vegetables' | 'cleaning' | 'offer' | 'local';
+type ProductTemplate = 'grocery' | 'vegetables' | 'cleaning' | 'offer';
 type ExportScope = 'filtered' | 'all' | 'category' | 'unavailable' | 'no-image' | 'offers';
 
 type PriceDraft = {
@@ -295,7 +294,6 @@ export default function AdminProducts() {
         product.unit,
         product.available ? 'متاح' : 'غير متاح خلصان',
         product.isOffer ? 'عرض عروض' : '',
-        product.isLocalProduct ? 'بلدي' : '',
         product.isFeatured ? 'مميز' : '',
         ...product.keywords,
         ...product.tags,
@@ -320,7 +318,6 @@ export default function AdminProducts() {
         (quickFilter === 'offers' && product.isOffer) ||
         (quickFilter === 'unavailable' && !product.available) ||
         (quickFilter === 'no-image' && !hasRealImage(product)) ||
-        (quickFilter === 'local' && product.isLocalProduct) ||
         (quickFilter === 'featured' && product.isFeatured) ||
         (quickFilter === 'updated-today' && isToday(updatedAt)) ||
         (quickFilter === 'stale' && isOlderThan(updatedAt, 30)) ||
@@ -484,7 +481,6 @@ export default function AdminProducts() {
         prev.unit || 'قطعة',
       available: true,
       isOffer: template === 'offer',
-      isLocalProduct: template === 'local' || template === 'vegetables',
     }));
     setForm((prev) => ({
       ...prev,
@@ -495,7 +491,6 @@ export default function AdminProducts() {
         template === 'grocery' ? 'كيلو' :
         prev.unit || 'قطعة',
       isOffer: template === 'offer' || prev.isOffer,
-      isLocalProduct: template === 'local' || template === 'vegetables' || prev.isLocalProduct,
     }));
   };
 
@@ -511,6 +506,7 @@ export default function AdminProducts() {
       id: undefined,
       name: `نسخة من ${product.name}`,
       sortOrder: '0',
+      isLocalProduct: false,
     });
     setNotice('تم تجهيز نسخة من المنتج. عدّل الاسم أو السعر ثم احفظ.');
     setShowForm(true);
@@ -575,7 +571,7 @@ export default function AdminProducts() {
         keywords: [quickForm.name.trim()],
         tags: [],
         isOffer: quickForm.isOffer,
-        isLocalProduct: quickForm.isLocalProduct,
+        isLocalProduct: false,
         isFeatured: false,
       });
       setNotice('تم إضافة المنتج بنجاح');
@@ -640,11 +636,10 @@ export default function AdminProducts() {
     return optimisticUpdate(product, changes, `تم تحديث ${field === 'price' ? 'السعر' : field === 'oldPrice' ? 'السعر القديم' : 'الكمية'}`, 'inline');
   };
 
-  const toggleField = async (product: Product, field: 'available' | 'isOffer' | 'isLocalProduct' | 'isFeatured') => {
+  const toggleField = async (product: Product, field: 'available' | 'isOffer' | 'isFeatured') => {
     const label =
       field === 'available' ? 'التوفر' :
       field === 'isOffer' ? 'العرض' :
-      field === 'isLocalProduct' ? 'منتج بلدي' :
       'منتج مميز';
 
     await optimisticUpdate(product, { [field]: !product[field] } as Partial<Product>, `تم تحديث ${label}`);
@@ -1088,7 +1083,7 @@ export default function AdminProducts() {
               available: quickForm.available,
               imageUrl: quickForm.imageUrl,
               isOffer: quickForm.isOffer,
-              isLocalProduct: quickForm.isLocalProduct,
+              isLocalProduct: false,
             });
             setShowForm(true);
           }}
@@ -1208,7 +1203,7 @@ function DesktopProductsTable({
   onToggleAll: () => void;
   onToggleSelected: (productId: string) => void;
   onInlineSave: (product: Product, field: InlineField, value: string) => Promise<boolean>;
-  onToggleField: (product: Product, field: 'available' | 'isOffer' | 'isLocalProduct' | 'isFeatured') => Promise<void>;
+  onToggleField: (product: Product, field: 'available' | 'isOffer' | 'isFeatured') => Promise<void>;
   onEdit: (product: Product) => void;
   onDuplicate: (product: Product) => void;
   onHistory: (product: Product) => void;
@@ -1234,7 +1229,6 @@ function DesktopProductsTable({
               <th className="px-3 py-3">الكمية</th>
               <th className="px-3 py-3">الحالة</th>
               <th className="px-3 py-3">عرض</th>
-              <th className="px-3 py-3">بلدي</th>
               <th className="px-3 py-3">آخر تحديث</th>
               <th className="px-3 py-3">إجراءات</th>
             </tr>
@@ -1292,9 +1286,6 @@ function DesktopProductsTable({
                   <td className="px-3 py-3">
                     <SwitchPill checked={product.isOffer} onChange={() => void onToggleField(product, 'isOffer')} trueLabel="عرض" falseLabel="لا" />
                   </td>
-                  <td className="px-3 py-3">
-                    <SwitchPill checked={product.isLocalProduct} onChange={() => void onToggleField(product, 'isLocalProduct')} trueLabel="بلدي" falseLabel="لا" />
-                  </td>
                   <td className="px-3 py-3 text-xs font-bold text-charcoal-muted">{relativeDate(product.updatedAt || product.createdAt)}</td>
                   <td className="px-3 py-3">
                     <div className="flex gap-1">
@@ -1333,7 +1324,7 @@ function MobileProductsCards({
   inlineSavingKey: string;
   onToggleSelected: (productId: string) => void;
   onInlineSave: (product: Product, field: InlineField, value: string) => Promise<boolean>;
-  onToggleField: (product: Product, field: 'available' | 'isOffer' | 'isLocalProduct' | 'isFeatured') => Promise<void>;
+  onToggleField: (product: Product, field: 'available' | 'isOffer' | 'isFeatured') => Promise<void>;
   onEdit: (product: Product) => void;
   onDuplicate: (product: Product) => void;
   onHistory: (product: Product) => void;
@@ -1369,10 +1360,9 @@ function MobileProductsCards({
               <InlineNumber value={product.stockQuantity ?? 0} saving={inlineSavingKey === `${product.id}-stockQuantity`} onSave={(value) => onInlineSave(product, 'stockQuantity', value)} />
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <SwitchPill checked={product.available} onChange={() => void onToggleField(product, 'available')} trueLabel="متاح" falseLabel="خلصان" />
               <SwitchPill checked={product.isOffer} onChange={() => void onToggleField(product, 'isOffer')} trueLabel="عرض اليوم" falseLabel="بدون عرض" />
-              <SwitchPill checked={product.isLocalProduct} onChange={() => void onToggleField(product, 'isLocalProduct')} trueLabel="منتج بلدي" falseLabel="ليس بلدي" />
               <SwitchPill checked={Boolean(product.isFeatured)} onChange={() => void onToggleField(product, 'isFeatured')} trueLabel="مميز" falseLabel="غير مميز" />
             </div>
 
@@ -1660,7 +1650,7 @@ function QuickAddModal({
       <div className="space-y-4">
         <div>
           <p className="mb-2 text-sm font-black text-charcoal">إضافة من قالب</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {productTemplates.map((template) => (
               <button
                 key={template.value}
@@ -1726,9 +1716,8 @@ function QuickAddModal({
           <Field label="الوحدة" value={form.unit} onChange={(value) => onChange({ ...form, unit: value })} placeholder="قطعة، كيلو، عبوة" />
           <Toggle label={form.available ? 'متاح' : 'خلصان'} checked={form.available} onChange={(checked) => onChange({ ...form, available: checked })} />
         </div>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2">
           <Toggle label="عرض اليوم" checked={form.isOffer} onChange={(checked) => onChange({ ...form, isOffer: checked })} />
-          <Toggle label="منتج بلدي" checked={form.isLocalProduct} onChange={(checked) => onChange({ ...form, isLocalProduct: checked })} />
         </div>
         {unitSuggestions.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -1822,9 +1811,8 @@ function FullProductModal({
         </FormSection>
 
         <FormSection title="التصنيف والظهور">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <Toggle label="عرض اليوم" checked={form.isOffer} onChange={(checked) => onChange({ ...form, isOffer: checked })} />
-            <Toggle label="منتج بلدي" checked={form.isLocalProduct} onChange={(checked) => onChange({ ...form, isLocalProduct: checked })} />
             <Toggle label="منتج مميز" checked={form.isFeatured} onChange={(checked) => onChange({ ...form, isFeatured: checked })} />
             <Field label="ترتيب الظهور" type="number" value={form.sortOrder} onChange={(value) => onChange({ ...form, sortOrder: value })} />
           </div>
@@ -1833,7 +1821,7 @@ function FullProductModal({
         <FormSection title="البحث والكلمات المفتاحية">
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="كلمات البحث" value={form.keywords} onChange={(value) => onChange({ ...form, keywords: value })} placeholder="سكر، رز، زيت" />
-            <Field label="Tags" value={form.tags} onChange={(value) => onChange({ ...form, tags: value })} placeholder="أساسي، عرض، بلدي" />
+            <Field label="Tags" value={form.tags} onChange={(value) => onChange({ ...form, tags: value })} placeholder="أساسي، عرض، مميز" />
           </div>
         </FormSection>
 
@@ -2389,7 +2377,6 @@ const quickFilters: Array<{ label: string; value: QuickFilter }> = [
   { label: 'عروض فقط', value: 'offers' },
   { label: 'غير متاح', value: 'unavailable' },
   { label: 'بدون صورة', value: 'no-image' },
-  { label: 'منتجات بلدي', value: 'local' },
   { label: 'مميزة', value: 'featured' },
   { label: 'تحديث اليوم', value: 'updated-today' },
   { label: 'لم تحدث من 30 يوم', value: 'stale' },
@@ -2404,7 +2391,6 @@ const productTemplates: Array<{ label: string; value: ProductTemplate }> = [
   { label: 'منتج خضار', value: 'vegetables' },
   { label: 'منتج منظفات', value: 'cleaning' },
   { label: 'منتج عرض', value: 'offer' },
-  { label: 'منتج بلدي', value: 'local' },
 ];
 
 function splitList(value: string) {

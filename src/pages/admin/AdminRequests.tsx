@@ -204,7 +204,7 @@ function RequestCard({
           {statuses.map((item) => <option key={item} value={item}>{item}</option>)}
         </select>
         <a
-          href={generateWhatsAppLink(`أهلاً، بنتواصل معاك بخصوص طلبك في سوق البلد: ${body}`, phone ? `2${phone.replace(/^0/, '')}` : undefined)}
+          href={generateWhatsAppLink(`أهلاً، بنتواصل معاك بخصوص طلبك في سوق البلد: ${body}`, phone || undefined)}
           target="_blank"
           rel="noreferrer"
           className="flex h-11 items-center justify-center gap-2 rounded-xl bg-whatsapp px-4 text-sm font-black text-white"

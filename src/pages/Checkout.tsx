@@ -239,7 +239,7 @@ export default function Checkout() {
             <p className="text-sm font-bold text-charcoal">الدفع عند الاستلام</p>
           </div>
           <a
-            href="tel:01234567890"
+            href={`tel:${settings.phoneNumber.replace(/\s/g, '')}`}
             className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-olive/25 bg-cream text-base font-extrabold text-olive-dark"
           >
             <Phone className="h-5 w-5" />

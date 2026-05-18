@@ -20,7 +20,7 @@ import type { Product } from '@/data/types';
 import { listProducts } from '@/services/productsService';
 import { listOrders, updateOrderStatus, type OrderRecord, type OrderStatus } from '@/services/ordersService';
 import { listCustomRequests, listSellerRequests, type CustomRequestRecord, type SellerRequestRecord } from '@/services/requestsService';
-import { generateWhatsAppLink } from '@/utils/whatsapp';
+import { generateOrderStatusUpdateMessage, generateWhatsAppLink } from '@/utils/whatsapp';
 
 const orderStatuses: OrderStatus[] = ['جديد', 'تم استلام الطلب', 'جاري التجهيز', 'خرج للتوصيل', 'تم التسليم', 'ملغي'];
 const checklistItems = [
@@ -105,11 +105,21 @@ export default function AdminDashboard() {
     .slice(0, 8);
 
   const changeOrderStatus = async (order: OrderRecord, status: OrderStatus) => {
+    if (order.status === status) return;
+    const whatsappWindow = window.open('', '_blank');
     try {
       await updateOrderStatus(order.id, status);
-      setOrders((prev) => prev.map((item) => (item.id === order.id ? { ...item, status } : item)));
+      const updatedOrder = { ...order, status };
+      setOrders((prev) => prev.map((item) => (item.id === order.id ? updatedOrder : item)));
+      const link = generateWhatsAppLink(generateOrderStatusUpdateMessage(updatedOrder), order.customerPhone);
+      if (whatsappWindow) {
+        whatsappWindow.location.href = link;
+      } else {
+        window.open(link, '_blank');
+      }
       setNotice('تم تحديث حالة الطلب');
     } catch (err) {
+      whatsappWindow?.close();
       setError(err instanceof Error ? err.message : 'حصل خطأ، حاول تاني');
     }
   };
@@ -251,7 +261,7 @@ function LatestOrders({
                   {orderStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                 </select>
                 <a
-                  href={generateWhatsAppLink(`أهلاً ${order.customerName}، طلبك ${order.orderNumber} حالته: ${order.status}`, `2${order.customerPhone.replace(/^0/, '')}`)}
+                  href={generateWhatsAppLink(generateOrderStatusUpdateMessage(order), order.customerPhone)}
                   target="_blank"
                   rel="noreferrer"
                   className="flex h-10 items-center justify-center gap-2 rounded-xl bg-whatsapp px-3 text-xs font-black text-white"

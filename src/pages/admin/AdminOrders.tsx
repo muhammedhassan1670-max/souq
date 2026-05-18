@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MessageCircle, Printer, RefreshCcw, Search } from 'lucide-react';
 import { listOrders, updateOrderStatus, type OrderRecord, type OrderStatus } from '@/services/ordersService';
-import { generateWhatsAppLink } from '@/utils/whatsapp';
+import { generateOrderStatusUpdateMessage, generateWhatsAppLink } from '@/utils/whatsapp';
 
 const statuses: OrderStatus[] = ['جديد', 'تم استلام الطلب', 'جاري التجهيز', 'خرج للتوصيل', 'تم التسليم', 'ملغي'];
 
@@ -37,8 +37,22 @@ export default function AdminOrders() {
   const totalSales = useMemo(() => orders.reduce((sum, order) => sum + order.total, 0), [orders]);
 
   const changeStatus = async (order: OrderRecord, nextStatus: OrderStatus) => {
-    await updateOrderStatus(order.id, nextStatus);
-    await refresh();
+    if (order.status === nextStatus) return;
+    const whatsappWindow = window.open('', '_blank');
+    try {
+      await updateOrderStatus(order.id, nextStatus);
+      await refresh();
+      const updatedOrder = { ...order, status: nextStatus };
+      const link = generateWhatsAppLink(generateOrderStatusUpdateMessage(updatedOrder), order.customerPhone);
+      if (whatsappWindow) {
+        whatsappWindow.location.href = link;
+      } else {
+        window.open(link, '_blank');
+      }
+    } catch (err) {
+      whatsappWindow?.close();
+      setError(err instanceof Error ? err.message : 'تعذر تحديث حالة الطلب');
+    }
   };
 
   const printOrder = (order: OrderRecord) => {
@@ -144,13 +158,13 @@ export default function AdminOrders() {
                   {statuses.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
                 <a
-                  href={generateWhatsAppLink(`أهلاً ${order.customerName}، طلبك ${order.orderNumber} حالته: ${order.status}`, `2${order.customerPhone.replace(/^0/, '')}`)}
+                  href={generateWhatsAppLink(generateOrderStatusUpdateMessage(order), order.customerPhone)}
                   target="_blank"
                   rel="noreferrer"
                   className="flex h-11 items-center justify-center gap-2 rounded-xl bg-whatsapp px-4 text-sm font-black text-white"
                 >
                   <MessageCircle className="h-4 w-4" />
-                  واتساب
+                  إرسال تحديث
                 </a>
                 <button onClick={() => printOrder(order)} className="flex h-11 items-center justify-center gap-2 rounded-xl bg-charcoal px-4 text-sm font-black text-white">
                   <Printer className="h-4 w-4" />
