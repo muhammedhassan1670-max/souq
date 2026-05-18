@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ClipboardList,
+  Copy,
   Download,
   Edit3,
   ImageOff,
@@ -20,7 +21,8 @@ import type { Product } from '@/data/types';
 import { listProducts } from '@/services/productsService';
 import { listOrders, updateOrderStatus, type OrderRecord, type OrderStatus } from '@/services/ordersService';
 import { listCustomRequests, listSellerRequests, type CustomRequestRecord, type SellerRequestRecord } from '@/services/requestsService';
-import { generateOrderStatusUpdateMessage, generateWhatsAppLink } from '@/utils/whatsapp';
+import { sendOrderStatusWhatsAppNotification } from '@/services/whatsappNotificationService';
+import { generateOrderStatusUpdateMessage } from '@/utils/whatsapp';
 
 const orderStatuses: OrderStatus[] = ['جديد', 'تم استلام الطلب', 'جاري التجهيز', 'خرج للتوصيل', 'تم التسليم', 'ملغي'];
 const checklistItems = [
@@ -106,21 +108,28 @@ export default function AdminDashboard() {
 
   const changeOrderStatus = async (order: OrderRecord, status: OrderStatus) => {
     if (order.status === status) return;
-    const whatsappWindow = window.open('', '_blank');
     try {
       await updateOrderStatus(order.id, status);
       const updatedOrder = { ...order, status };
       setOrders((prev) => prev.map((item) => (item.id === order.id ? updatedOrder : item)));
-      const link = generateWhatsAppLink(generateOrderStatusUpdateMessage(updatedOrder), order.customerPhone);
-      if (whatsappWindow) {
-        whatsappWindow.location.href = link;
-      } else {
-        window.open(link, '_blank');
+      try {
+        const notification = await sendOrderStatusWhatsAppNotification(updatedOrder);
+        setNotice(notification.sent ? 'تم تحديث الحالة وإرسال واتساب تلقائيًا' : 'تم تحديث الحالة، وإرسال واتساب التلقائي غير مفعّل');
+      } catch (notificationError) {
+        setNotice('تم تحديث حالة الطلب داخل الصفحة');
+        setError(notificationError instanceof Error ? `تعذر إرسال واتساب تلقائيًا: ${notificationError.message}` : 'تعذر إرسال واتساب تلقائيًا');
       }
-      setNotice('تم تحديث حالة الطلب');
     } catch (err) {
-      whatsappWindow?.close();
       setError(err instanceof Error ? err.message : 'حصل خطأ، حاول تاني');
+    }
+  };
+
+  const copyOrderStatusUpdate = async (order: OrderRecord) => {
+    try {
+      await navigator.clipboard.writeText(generateOrderStatusUpdateMessage(order));
+      setNotice('تم نسخ رسالة التحديث');
+    } catch {
+      setError('تعذر نسخ رسالة التحديث');
     }
   };
 
@@ -182,7 +191,11 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-        <LatestOrders orders={latestOrders} onChangeStatus={(order, status) => void changeOrderStatus(order, status)} />
+        <LatestOrders
+          orders={latestOrders}
+          onChangeStatus={(order, status) => void changeOrderStatus(order, status)}
+          onCopyStatusUpdate={(order) => void copyOrderStatusUpdate(order)}
+        />
         <ProductsNeedAttention products={attentionProducts} onOpen={(url) => navigate(url)} />
       </div>
     </div>
@@ -229,9 +242,11 @@ function AlertsPanel({
 function LatestOrders({
   orders,
   onChangeStatus,
+  onCopyStatusUpdate,
 }: {
   orders: OrderRecord[];
   onChangeStatus: (order: OrderRecord, status: OrderStatus) => void;
+  onCopyStatusUpdate: (order: OrderRecord) => void;
 }) {
   return (
     <section className="rounded-2xl border border-sand bg-white p-4 shadow-card">
@@ -260,15 +275,13 @@ function LatestOrders({
                 >
                   {orderStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                 </select>
-                <a
-                  href={generateWhatsAppLink(generateOrderStatusUpdateMessage(order), order.customerPhone)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex h-10 items-center justify-center gap-2 rounded-xl bg-whatsapp px-3 text-xs font-black text-white"
+                <button
+                  onClick={() => onCopyStatusUpdate(order)}
+                  className="flex h-10 items-center justify-center gap-2 rounded-xl bg-white px-3 text-xs font-black text-charcoal"
                 >
-                  <MessageCircle className="h-4 w-4" />
-                  واتساب
-                </a>
+                  <Copy className="h-4 w-4" />
+                  نسخ التحديث
+                </button>
                 <span className="flex h-10 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-olive-dark">{order.total} ج</span>
               </div>
             </div>

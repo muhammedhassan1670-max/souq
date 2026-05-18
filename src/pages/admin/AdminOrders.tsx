@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { MessageCircle, Printer, RefreshCcw, Search } from 'lucide-react';
+import { Copy, Printer, RefreshCcw, Search } from 'lucide-react';
 import { listOrders, updateOrderStatus, type OrderRecord, type OrderStatus } from '@/services/ordersService';
-import { generateOrderStatusUpdateMessage, generateWhatsAppLink } from '@/utils/whatsapp';
+import { sendOrderStatusWhatsAppNotification } from '@/services/whatsappNotificationService';
+import { generateOrderStatusUpdateMessage } from '@/utils/whatsapp';
 
 const statuses: OrderStatus[] = ['جديد', 'تم استلام الطلب', 'جاري التجهيز', 'خرج للتوصيل', 'تم التسليم', 'ملغي'];
 
@@ -13,6 +14,7 @@ export default function AdminOrders() {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     const nextStatus = searchParams.get('status');
@@ -38,20 +40,28 @@ export default function AdminOrders() {
 
   const changeStatus = async (order: OrderRecord, nextStatus: OrderStatus) => {
     if (order.status === nextStatus) return;
-    const whatsappWindow = window.open('', '_blank');
     try {
       await updateOrderStatus(order.id, nextStatus);
       await refresh();
       const updatedOrder = { ...order, status: nextStatus };
-      const link = generateWhatsAppLink(generateOrderStatusUpdateMessage(updatedOrder), order.customerPhone);
-      if (whatsappWindow) {
-        whatsappWindow.location.href = link;
-      } else {
-        window.open(link, '_blank');
+      try {
+        const notification = await sendOrderStatusWhatsAppNotification(updatedOrder);
+        setNotice(notification.sent ? 'تم تحديث الحالة وإرسال واتساب تلقائيًا' : 'تم تحديث الحالة، وإرسال واتساب التلقائي غير مفعّل');
+      } catch (notificationError) {
+        setNotice('تم تحديث حالة الطلب داخل الصفحة');
+        setError(notificationError instanceof Error ? `تعذر إرسال واتساب تلقائيًا: ${notificationError.message}` : 'تعذر إرسال واتساب تلقائيًا');
       }
     } catch (err) {
-      whatsappWindow?.close();
       setError(err instanceof Error ? err.message : 'تعذر تحديث حالة الطلب');
+    }
+  };
+
+  const copyStatusUpdate = async (order: OrderRecord) => {
+    try {
+      await navigator.clipboard.writeText(generateOrderStatusUpdateMessage(order));
+      setNotice('تم نسخ رسالة التحديث');
+    } catch {
+      setError('تعذر نسخ رسالة التحديث');
     }
   };
 
@@ -85,6 +95,7 @@ export default function AdminOrders() {
           </button>
         </div>
       )}
+      {notice && <div className="rounded-xl bg-success/10 p-3 text-sm font-bold text-success">{notice}</div>}
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl border border-sand bg-white p-4 shadow-card">
           <p className="text-2xl font-black text-charcoal">{orders.length}</p>
@@ -157,15 +168,13 @@ export default function AdminOrders() {
                 >
                   {statuses.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
-                <a
-                  href={generateWhatsAppLink(generateOrderStatusUpdateMessage(order), order.customerPhone)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-whatsapp px-4 text-sm font-black text-white"
+                <button
+                  onClick={() => void copyStatusUpdate(order)}
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-cream-warm px-4 text-sm font-black text-charcoal"
                 >
-                  <MessageCircle className="h-4 w-4" />
-                  إرسال تحديث
-                </a>
+                  <Copy className="h-4 w-4" />
+                  نسخ التحديث
+                </button>
                 <button onClick={() => printOrder(order)} className="flex h-11 items-center justify-center gap-2 rounded-xl bg-charcoal px-4 text-sm font-black text-white">
                   <Printer className="h-4 w-4" />
                   طباعة
