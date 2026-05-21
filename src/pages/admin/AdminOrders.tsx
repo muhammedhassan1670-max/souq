@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Copy, Printer, RefreshCcw, Search } from 'lucide-react';
 import { listOrders, updateOrderStatus, type OrderRecord, type OrderStatus } from '@/services/ordersService';
-import { sendOrderStatusWhatsAppNotification } from '@/services/whatsappNotificationService';
-import { generateOrderStatusUpdateMessage } from '@/utils/whatsapp';
+import { generateOrderStatusUpdateMessage, generateWhatsAppLink } from '@/utils/whatsapp';
 
 const statuses: OrderStatus[] = ['جديد', 'تم استلام الطلب', 'جاري التجهيز', 'خرج للتوصيل', 'تم التسليم', 'ملغي'];
 
@@ -40,18 +39,20 @@ export default function AdminOrders() {
 
   const changeStatus = async (order: OrderRecord, nextStatus: OrderStatus) => {
     if (order.status === nextStatus) return;
+    const whatsappWindow = window.open('', '_blank');
     try {
       await updateOrderStatus(order.id, nextStatus);
       await refresh();
       const updatedOrder = { ...order, status: nextStatus };
-      try {
-        const notification = await sendOrderStatusWhatsAppNotification(updatedOrder);
-        setNotice(notification.sent ? 'تم تحديث الحالة وإرسال واتساب تلقائيًا' : 'تم تحديث الحالة، وإرسال واتساب التلقائي غير مفعّل');
-      } catch (notificationError) {
-        setNotice('تم تحديث حالة الطلب داخل الصفحة');
-        setError(notificationError instanceof Error ? `تعذر إرسال واتساب تلقائيًا: ${notificationError.message}` : 'تعذر إرسال واتساب تلقائيًا');
+      const link = generateWhatsAppLink(generateOrderStatusUpdateMessage(updatedOrder), order.customerPhone);
+      if (whatsappWindow) {
+        whatsappWindow.location.href = link;
+      } else {
+        window.open(link, '_blank');
       }
+      setNotice('تم تحديث الحالة وفتح رسالة واتساب');
     } catch (err) {
+      whatsappWindow?.close();
       setError(err instanceof Error ? err.message : 'تعذر تحديث حالة الطلب');
     }
   };

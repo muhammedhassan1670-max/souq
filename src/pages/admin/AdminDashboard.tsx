@@ -21,8 +21,7 @@ import type { Product } from '@/data/types';
 import { listProducts } from '@/services/productsService';
 import { listOrders, updateOrderStatus, type OrderRecord, type OrderStatus } from '@/services/ordersService';
 import { listCustomRequests, listSellerRequests, type CustomRequestRecord, type SellerRequestRecord } from '@/services/requestsService';
-import { sendOrderStatusWhatsAppNotification } from '@/services/whatsappNotificationService';
-import { generateOrderStatusUpdateMessage } from '@/utils/whatsapp';
+import { generateOrderStatusUpdateMessage, generateWhatsAppLink } from '@/utils/whatsapp';
 
 const orderStatuses: OrderStatus[] = ['جديد', 'تم استلام الطلب', 'جاري التجهيز', 'خرج للتوصيل', 'تم التسليم', 'ملغي'];
 const checklistItems = [
@@ -108,18 +107,20 @@ export default function AdminDashboard() {
 
   const changeOrderStatus = async (order: OrderRecord, status: OrderStatus) => {
     if (order.status === status) return;
+    const whatsappWindow = window.open('', '_blank');
     try {
       await updateOrderStatus(order.id, status);
       const updatedOrder = { ...order, status };
       setOrders((prev) => prev.map((item) => (item.id === order.id ? updatedOrder : item)));
-      try {
-        const notification = await sendOrderStatusWhatsAppNotification(updatedOrder);
-        setNotice(notification.sent ? 'تم تحديث الحالة وإرسال واتساب تلقائيًا' : 'تم تحديث الحالة، وإرسال واتساب التلقائي غير مفعّل');
-      } catch (notificationError) {
-        setNotice('تم تحديث حالة الطلب داخل الصفحة');
-        setError(notificationError instanceof Error ? `تعذر إرسال واتساب تلقائيًا: ${notificationError.message}` : 'تعذر إرسال واتساب تلقائيًا');
+      const link = generateWhatsAppLink(generateOrderStatusUpdateMessage(updatedOrder), order.customerPhone);
+      if (whatsappWindow) {
+        whatsappWindow.location.href = link;
+      } else {
+        window.open(link, '_blank');
       }
+      setNotice('تم تحديث الحالة وفتح رسالة واتساب');
     } catch (err) {
+      whatsappWindow?.close();
       setError(err instanceof Error ? err.message : 'حصل خطأ، حاول تاني');
     }
   };
