@@ -163,28 +163,32 @@ export default function AdminDashboard() {
       {error && <Notice tone="error" onClose={() => setError('')}>{error}</Notice>}
       {notice && <Notice tone="success" onClose={() => setNotice('')}>{notice}</Notice>}
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-8">
-        <MetricCard label="طلبات جديدة اليوم" value={metrics.newOrdersToday} icon={<ShoppingCart />} tone="blue" onClick={() => navigate('/admin/orders?status=جديد')} />
-        <MetricCard label="مبيعات اليوم" value={`${metrics.salesToday} ج`} icon={<ClipboardList />} tone="green" />
-        <MetricCard label="قيد التجهيز" value={metrics.preparingOrders} icon={<Edit3 />} tone="orange" onClick={() => navigate('/admin/orders')} />
-        <MetricCard label="غير متوفر" value={metrics.unavailableProducts} icon={<AlertTriangle />} tone="red" onClick={() => navigate('/admin/products?filter=unavailable')} />
-        <MetricCard label="كمية قليلة" value={metrics.lowStockProducts} icon={<Package />} tone="orange" onClick={() => navigate('/admin/inventory')} />
-        <MetricCard label="تحتاج سعر" value={metrics.staleProducts} icon={<Percent />} tone="olive" onClick={() => navigate('/admin/products?filter=stale')} />
-        <MetricCard label="طلبات بائعين" value={metrics.newSellerRequests} icon={<Store />} tone="blue" onClick={() => navigate('/admin/requests?tab=sellers')} />
-        <MetricCard label="اطلب أي حاجة" value={metrics.newCustomRequests} icon={<MessageCircle />} tone="green" onClick={() => navigate('/admin/requests?tab=custom')} />
-      </section>
+      <PriorityActions metrics={metrics} onNavigate={(url) => navigate(url)} />
 
       <section className="rounded-2xl border border-sand bg-white p-4 shadow-card">
-        <h2 className="mb-3 text-lg font-black text-charcoal">اختصارات سريعة</h2>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
-          <ActionLink to="/admin/products?add=quick" icon={<Zap />}>إضافة منتج سريع</ActionLink>
-          <ActionLink to="/admin/products?mode=price-update" icon={<Edit3 />}>وضع تحديث الأسعار</ActionLink>
-          <ActionLink to="/admin/offers" icon={<Percent />}>إضافة عرض اليوم</ActionLink>
-          <ActionLink to="/admin/orders?status=جديد" icon={<ShoppingCart />}>مراجعة الطلبات الجديدة</ActionLink>
-          <ActionLink to="/admin/inventory" icon={<Package />}>تحديث حالة المنتجات</ActionLink>
-          <ActionLink to="/admin/products?export=csv" icon={<Download />}>تصدير المنتجات CSV</ActionLink>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-black text-charcoal">مؤشرات التشغيل</h2>
+            <p className="text-xs font-bold text-charcoal-muted">أرقام سريعة تساعدك تاخد قرار في دقيقة.</p>
+          </div>
+          <button onClick={() => void refresh()} className="flex h-10 items-center gap-2 rounded-xl bg-cream-warm px-3 text-xs font-black text-charcoal">
+            <RefreshCcw className="h-4 w-4" />
+            تحديث البيانات
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-8">
+          <MetricCard label="طلبات جديدة اليوم" value={metrics.newOrdersToday} icon={<ShoppingCart />} tone="blue" onClick={() => navigate('/admin/orders?status=جديد')} />
+          <MetricCard label="مبيعات اليوم" value={`${metrics.salesToday} ج`} icon={<ClipboardList />} tone="green" />
+          <MetricCard label="قيد التجهيز" value={metrics.preparingOrders} icon={<Edit3 />} tone="orange" onClick={() => navigate('/admin/orders')} />
+          <MetricCard label="غير متوفر" value={metrics.unavailableProducts} icon={<AlertTriangle />} tone="red" onClick={() => navigate('/admin/products?filter=unavailable')} />
+          <MetricCard label="كمية قليلة" value={metrics.lowStockProducts} icon={<Package />} tone="orange" onClick={() => navigate('/admin/inventory')} />
+          <MetricCard label="تحتاج سعر" value={metrics.staleProducts} icon={<Percent />} tone="olive" onClick={() => navigate('/admin/products?filter=stale')} />
+          <MetricCard label="طلبات بائعين" value={metrics.newSellerRequests} icon={<Store />} tone="blue" onClick={() => navigate('/admin/requests?tab=sellers')} />
+          <MetricCard label="اطلب أي حاجة" value={metrics.newCustomRequests} icon={<MessageCircle />} tone="green" onClick={() => navigate('/admin/requests?tab=custom')} />
         </div>
       </section>
+
+      <AdminToolbox />
 
       <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
         <AlertsPanel metrics={metrics} onNavigate={(url) => navigate(url)} />
@@ -237,6 +241,97 @@ function AlertsPanel({
         ))}
       </div>
     </section>
+  );
+}
+
+function PriorityActions({ metrics, onNavigate }: { metrics: DashboardMetrics; onNavigate: (url: string) => void }) {
+  const urgentCount = metrics.newOrdersToday + metrics.lowStockProducts + metrics.missingImage + metrics.offerMissingOldPrice;
+  return (
+    <section className="grid gap-4 xl:grid-cols-[1fr_1.35fr]">
+      <div className="rounded-2xl border border-sand bg-olive-dark p-4 text-white shadow-card">
+        <p className="text-sm font-black text-white/70">أهم حاجة دلوقتي</p>
+        <h2 className="mt-2 text-2xl font-black">ابدأ بالتشغيل اليومي</h2>
+        <p className="mt-2 text-sm font-bold leading-6 text-white/75">
+          عندك {urgentCount} عنصر محتاج متابعة بين طلبات ومنتجات وتنبيهات. ابدأ بالطلبات الجديدة ثم المخزون والأسعار.
+        </p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <button onClick={() => onNavigate('/admin/orders?status=جديد')} className="h-12 rounded-xl bg-white text-sm font-black text-olive-dark">
+            مراجعة الطلبات الجديدة
+          </button>
+          <button onClick={() => onNavigate('/admin/inventory')} className="h-12 rounded-xl bg-white/10 text-sm font-black text-white ring-1 ring-white/15">
+            متابعة المخزون
+          </button>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <FocusTile
+          title="إضافة أو تعديل منتج"
+          text="أسرع مدخل لإضافة منتج، صورة، وسعر."
+          icon={<Zap />}
+          onClick={() => onNavigate('/admin/products?add=quick')}
+        />
+        <FocusTile
+          title="تحديث الأسعار"
+          text="وضع مخصص لتعديل الأسعار بسرعة."
+          icon={<Percent />}
+          onClick={() => onNavigate('/admin/products?mode=price-update')}
+        />
+        <FocusTile
+          title="عروض اليوم"
+          text="راجع العروض والسعر القديم قبل النشر."
+          icon={<ClipboardList />}
+          onClick={() => onNavigate('/admin/offers')}
+        />
+        <FocusTile
+          title="الطلبات الخاصة"
+          text="اطلب أي حاجة وطلبات البائعين في مكان واحد."
+          icon={<MessageCircle />}
+          onClick={() => onNavigate('/admin/requests')}
+        />
+      </div>
+    </section>
+  );
+}
+
+function FocusTile({ title, text, icon, onClick }: { title: string; text: string; icon: ReactNode; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="rounded-2xl border border-sand bg-white p-4 text-right shadow-card transition hover:-translate-y-0.5 hover:shadow-elevated">
+      <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-cream-warm text-olive-dark [&>svg]:h-5 [&>svg]:w-5">{icon}</span>
+      <span className="block text-base font-black text-charcoal">{title}</span>
+      <span className="mt-1 block text-xs font-bold leading-5 text-charcoal-muted">{text}</span>
+    </button>
+  );
+}
+
+function AdminToolbox() {
+  return (
+    <section className="rounded-2xl border border-sand bg-white p-4 shadow-card">
+      <div className="mb-3">
+        <h2 className="text-lg font-black text-charcoal">أدوات الإدارة</h2>
+        <p className="text-xs font-bold text-charcoal-muted">روابط مباشرة للمهام المتكررة بدون لف كتير.</p>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ToolGroup title="إجراءات يومية">
+          <ActionLink to="/admin/products?add=quick" icon={<Zap />}>إضافة منتج سريع</ActionLink>
+          <ActionLink to="/admin/orders?status=جديد" icon={<ShoppingCart />}>مراجعة الطلبات الجديدة</ActionLink>
+          <ActionLink to="/admin/products?mode=price-update" icon={<Edit3 />}>وضع تحديث الأسعار</ActionLink>
+        </ToolGroup>
+        <ToolGroup title="مراجعة السوق">
+          <ActionLink to="/admin/offers" icon={<Percent />}>إدارة العروض</ActionLink>
+          <ActionLink to="/admin/inventory" icon={<Package />}>تحديث حالة المنتجات</ActionLink>
+          <ActionLink to="/admin/products?export=csv" icon={<Download />}>تصدير المنتجات CSV</ActionLink>
+        </ToolGroup>
+      </div>
+    </section>
+  );
+}
+
+function ToolGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div>
+      <p className="mb-2 text-sm font-black text-clay-dark">{title}</p>
+      <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">{children}</div>
+    </div>
   );
 }
 
