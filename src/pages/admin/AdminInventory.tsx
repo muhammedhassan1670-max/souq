@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { Product } from '@/data/types';
 import { listProducts, updateProduct, type ProductInput } from '@/services/productsService';
 import { Download, Package, RefreshCcw } from 'lucide-react';
+import { getCairoDateKey } from '@/utils/dateTime';
 
 type InventoryView = 'all' | 'unavailable' | 'low' | 'zero' | 'no-quantity';
 
@@ -88,7 +89,7 @@ export default function AdminInventory() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `souq-inventory-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `souq-inventory-${getCairoDateKey()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };

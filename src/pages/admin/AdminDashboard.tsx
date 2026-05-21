@@ -21,6 +21,7 @@ import type { Product } from '@/data/types';
 import { listProducts } from '@/services/productsService';
 import { listOrders, updateOrderStatus, type OrderRecord, type OrderStatus } from '@/services/ordersService';
 import { listCustomRequests, listSellerRequests, type CustomRequestRecord, type SellerRequestRecord } from '@/services/requestsService';
+import { getCairoDateKey, isCairoToday, parseAppDate } from '@/utils/dateTime';
 import { generateOrderStatusUpdateMessage, generateWhatsAppLink } from '@/utils/whatsapp';
 
 const orderStatuses: OrderStatus[] = ['جديد', 'تم استلام الطلب', 'جاري التجهيز', 'خرج للتوصيل', 'تم التسليم', 'ملغي'];
@@ -83,7 +84,7 @@ export default function AdminDashboard() {
   }, [refresh]);
 
   const metrics = useMemo(() => {
-    const todayOrders = orders.filter((order) => isToday(order.createdAt));
+    const todayOrders = orders.filter((order) => isCairoToday(order.createdAt));
     const activeStatuses = new Set<OrderStatus>(['تم استلام الطلب', 'جاري التجهيز', 'خرج للتوصيل']);
     return {
       newOrdersToday: todayOrders.filter((order) => order.status === 'جديد').length,
@@ -541,18 +542,14 @@ function attentionText(product: Product) {
   return 'يحتاج مراجعة';
 }
 
-function isToday(value?: string) {
-  if (!value) return false;
-  return new Date(value).toDateString() === new Date().toDateString();
-}
-
 function isOlderThan(value: string | undefined, days: number) {
   if (!value) return true;
-  return Date.now() - new Date(value).getTime() > days * 24 * 60 * 60 * 1000;
+  const date = parseAppDate(value);
+  return !date || Date.now() - date.getTime() > days * 24 * 60 * 60 * 1000;
 }
 
 function checklistKey() {
-  return `souq-admin-checklist-${new Date().toISOString().slice(0, 10)}`;
+  return `souq-admin-checklist-${getCairoDateKey()}`;
 }
 
 function loadChecklist() {

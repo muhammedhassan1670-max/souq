@@ -2,6 +2,7 @@ import type { CartItem } from '@/data/types';
 import { isSupabaseConfigured, requireSupabase } from '@/lib/supabase';
 import { loadMarketState, saveMarketState } from './marketStore';
 import { subscribeToTableChanges } from '@/services/realtimeService';
+import { getCairoYear } from '@/utils/dateTime';
 
 export type OrderStatus =
   | 'جديد'
@@ -77,7 +78,7 @@ type OrderRow = {
 export async function createOrder(input: CustomerOrderInput) {
   if (!isSupabaseConfigured) {
     const state = loadMarketState();
-    const orderNumber = `SB-${new Date().getFullYear()}-${String(state.orders.length + 1).padStart(4, '0')}`;
+    const orderNumber = `SB-${getCairoYear()}-${String(state.orders.length + 1).padStart(4, '0')}`;
     saveMarketState({
       ...state,
       orders: [

@@ -4,6 +4,7 @@ import { Download, Percent, RefreshCcw, Search, X } from 'lucide-react';
 import type { Product } from '@/data/types';
 import { listProducts, updateProduct, type ProductInput } from '@/services/productsService';
 import { recordProductPriceHistory } from '@/services/productPriceHistoryService';
+import { getCairoDateKey } from '@/utils/dateTime';
 
 type OfferDraft = {
   price: string;
@@ -113,7 +114,7 @@ export default function AdminOffers() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `souq-offers-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `souq-offers-${getCairoDateKey()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };

@@ -27,6 +27,7 @@ import { listShops } from '@/services/shopsService';
 import { listOrders } from '@/services/ordersService';
 import { uploadMarketImage } from '@/services/uploadService';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { formatCairoRelativeDate, getCairoDateKey, isCairoToday, parseAppDate } from '@/utils/dateTime';
 import {
   listProductPriceHistory,
   recordProductPriceHistory,
@@ -319,7 +320,7 @@ export default function AdminProducts() {
         (quickFilter === 'unavailable' && !product.available) ||
         (quickFilter === 'no-image' && !hasRealImage(product)) ||
         (quickFilter === 'featured' && product.isFeatured) ||
-        (quickFilter === 'updated-today' && isToday(updatedAt)) ||
+        (quickFilter === 'updated-today' && isCairoToday(updatedAt)) ||
         (quickFilter === 'stale' && isOlderThan(updatedAt, 30)) ||
         (quickFilter === 'missing-data' && hasMissingData(product)) ||
         (quickFilter === 'missing-price' && hasMissingPrice(product)) ||
@@ -784,7 +785,7 @@ export default function AdminProducts() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `souq-products-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `souq-products-${getCairoDateKey()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
     setNotice(`تم تصدير ${rows.length} منتج`);
@@ -1286,7 +1287,7 @@ function DesktopProductsTable({
                   <td className="px-3 py-3">
                     <SwitchPill checked={product.isOffer} onChange={() => void onToggleField(product, 'isOffer')} trueLabel="عرض" falseLabel="لا" />
                   </td>
-                  <td className="px-3 py-3 text-xs font-bold text-charcoal-muted">{relativeDate(product.updatedAt || product.createdAt)}</td>
+                  <td className="px-3 py-3 text-xs font-bold text-charcoal-muted">{formatCairoRelativeDate(product.updatedAt || product.createdAt)}</td>
                   <td className="px-3 py-3">
                     <div className="flex gap-1">
                       <IconButton label="تعديل" onClick={() => onEdit(product)}><Edit3 className="h-4 w-4" /></IconButton>
@@ -1346,7 +1347,7 @@ function MobileProductsCards({
                   {hasMissingData(product) && <Badge text="مراجعة" danger />}
                 </div>
                 <p className="mt-1 text-xs font-bold text-charcoal-muted">{product.category || 'بدون قسم'} - {shop?.name || 'بدون محل'}</p>
-                <p className="mt-1 text-xs font-bold text-charcoal-muted">{relativeDate(product.updatedAt || product.createdAt)}</p>
+                <p className="mt-1 text-xs font-bold text-charcoal-muted">{formatCairoRelativeDate(product.updatedAt || product.createdAt)}</p>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {Number(product.stockQuantity ?? 0) === 0 && <Badge text="خلصان" danger />}
                   {product.available && Number(product.stockQuantity ?? 0) > 0 && Number(product.stockQuantity ?? 0) <= 3 && <Badge text="كمية قليلة" danger />}
@@ -1404,7 +1405,7 @@ function PriceHistoryModal({
             <div key={item.id} className="rounded-2xl border border-sand bg-cream p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-black text-charcoal">{changeSourceLabel(item.changeSource)}</p>
-                <p className="text-xs font-bold text-charcoal-muted">{relativeDate(item.changedAt)}</p>
+                <p className="text-xs font-bold text-charcoal-muted">{formatCairoRelativeDate(item.changedAt)}</p>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2 text-sm font-bold text-charcoal">
                 <p>السعر: {item.oldPrice ?? '-'} ← <span className="font-black text-olive-dark">{item.newPrice ?? '-'}</span></p>
@@ -2219,7 +2220,7 @@ function ExportCsvModal({
           </Select>
         )}
         <div className="rounded-2xl bg-cream p-3 text-sm font-bold text-charcoal-muted">
-          اسم الملف: souq-products-{new Date().toISOString().slice(0, 10)}.csv
+          اسم الملف: souq-products-{getCairoDateKey()}.csv
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           <button onClick={() => onExport(scope, categoryId)} className="h-12 rounded-xl bg-olive text-sm font-black text-white">
@@ -2722,30 +2723,10 @@ function similarityScore(a: string, b: string) {
   return union === 0 ? 0 : intersection / union;
 }
 
-function isToday(value?: string) {
-  if (!value) return false;
-  const date = new Date(value);
-  const now = new Date();
-  return date.toDateString() === now.toDateString();
-}
-
 function isOlderThan(value: string | undefined, days: number) {
   if (!value) return true;
-  const date = new Date(value).getTime();
+  const date = parseAppDate(value)?.getTime() ?? 0;
   return Date.now() - date > days * 24 * 60 * 60 * 1000;
-}
-
-function relativeDate(value?: string) {
-  if (!value) return 'لم يحدث';
-  const diffMs = Date.now() - new Date(value).getTime();
-  const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return 'الآن';
-  if (minutes < 60) return `منذ ${minutes} دقيقة`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `منذ ${hours} ساعة`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `منذ ${days} يوم`;
-  return new Date(value).toLocaleDateString('ar-EG');
 }
 
 function changeSourceLabel(source: PriceChangeSource) {
